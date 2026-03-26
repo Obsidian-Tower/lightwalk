@@ -360,6 +360,10 @@ async function fetchParcelsForPolygon(polyObj) {
     const a = f.attributes;
 
     if (!a.INSIDE_Y || !a.INSIDE_X) return;
+    if (!a.alt_key) {
+      console.warn("Missing alt_key for parcel:", a);
+      return;
+    }
     if (!a.alt_key) return;
 
     parcelIds.push(a.alt_key);
@@ -491,7 +495,16 @@ async function fetchCurrentParcelStatuses(parcelIds) {
       })
     });
 
-    return await res.json();
+    const data = await res.json();
+
+    // 🔥 HARD GUARD
+    if (!Array.isArray(data)) {
+      console.error("Invalid statuses response:", data);
+      return []; // prevent crash
+    }
+
+    return data;
+
   } catch (err) {
     console.error("Failed to fetch statuses", err);
     return [];
@@ -499,6 +512,11 @@ async function fetchCurrentParcelStatuses(parcelIds) {
 }
 
 function createMarkersWithStatuses(polyObj, parcelData, statuses) {
+
+  if (!Array.isArray(statuses)) {
+    console.warn("Statuses not array, defaulting to empty");
+    statuses = [];
+  }
   const statusMap = {};
 
   statuses.forEach(s => {
