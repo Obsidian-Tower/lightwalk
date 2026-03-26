@@ -12,7 +12,7 @@ export default {
       return serveStatic("index.html", env);
     }
 
-    if (pathname === "/get-parcels") {
+    if (url.pathname === "/get-parcels") {
       return handleGetParcels(request, env);
     }
 
