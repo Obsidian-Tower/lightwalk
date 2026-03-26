@@ -7,7 +7,9 @@ export default {
     if (request.method === "OPTIONS") {
       return handleCORS();
     }
-
+    if (request.method === "POST" && url.pathname === "/update-parcel-status") {
+      return handleUpdateParcelStatus(request, env);
+    }
     if (url.pathname === "/get-current-parcels") {
       return handleGetCurrentParcels(request, env);
     }
@@ -44,6 +46,42 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+
+async function handleUpdateParcelStatus(request, env) {
+  try {
+    const body = await request.json();
+
+    const { parcel_id, status, user } = body;
+
+    if (!parcel_id || !status || !user) {
+      return json({ error: "Missing parcel_id, status, or user" }, 400);
+    }
+
+    // 🔥 Insert new row (append-only history)
+    await env.DB.prepare(`
+      INSERT INTO parcel_status (id, parcel_id, status, updated_by)
+      VALUES (?, ?, ?, ?)
+    `)
+      .bind(
+        crypto.randomUUID(),
+        parcel_id.toString(),
+        status,
+        user
+      )
+      .run();
+
+    return json({
+      success: true,
+      parcel_id,
+      status,
+      user
+    });
+
+  } catch (err) {
+    console.error("update-parcel-status error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 
 // add to your Worker
 async function handleGetParcels(request, env) {

@@ -180,6 +180,7 @@ const STATUS_COLORS = {
   "follow up": "#1e3a8a",       // dark blue
   "sold": "#14532d"             // dark green
 };  
+let CURRENT_USER = null;
 let map;
 let drawing = false;
 let currentPath = [];
@@ -206,6 +207,66 @@ function initMap() {
       activeInfoWindow = null;
     }
   });
+}
+
+function showUserSelectionModal() {
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.top = "0";
+  overlay.style.left = "0";
+  overlay.style.width = "100%";
+  overlay.style.height = "100%";
+  overlay.style.background = "rgba(0,0,0,0.85)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.zIndex = "99999";
+
+  const box = document.createElement("div");
+  box.style.background = "#111";
+  box.style.padding = "30px";
+  box.style.borderRadius = "12px";
+  box.style.textAlign = "center";
+  box.style.color = "white";
+  box.style.minWidth = "250px";
+
+  const title = document.createElement("div");
+  title.textContent = "Select User";
+  title.style.marginBottom = "20px";
+  title.style.fontSize = "18px";
+  title.style.fontWeight = "600";
+
+  box.appendChild(title);
+
+  const users = ["Cory", "James", "Caleb", "Edward"];
+
+  users.forEach(user => {
+    const btn = document.createElement("button");
+
+    btn.textContent = user;
+    btn.style.display = "block";
+    btn.style.width = "100%";
+    btn.style.marginBottom = "10px";
+    btn.style.padding = "10px";
+    btn.style.borderRadius = "8px";
+    btn.style.border = "none";
+    btn.style.cursor = "pointer";
+    btn.style.background = "#2563eb";
+    btn.style.color = "white";
+
+    btn.onclick = () => {
+      CURRENT_USER = user;
+
+      console.log("👤 User selected:", CURRENT_USER);
+
+      document.body.removeChild(overlay);
+    };
+
+    box.appendChild(btn);
+  });
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function screenToLatLng(x, y) {
@@ -598,23 +659,31 @@ function attachMarkerPopup(marker, data) {
         btn.style.outline = "2px solid white";
       }
 
-      btn.onclick = () => {
-        marker.current_status = status;
+      btn.onclick = async () => {
+        if (marker.current_status === status) return;
 
-        marker.setIcon({
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: STATUS_COLORS[status],
-          fillOpacity: 1,
-          strokeWeight: 1,
-          strokeColor: "#000"
-        });
+        try {
+          // 🔥 send update to backend
+          await updateParcelStatus(marker.parcel_id, status);
 
-        // update UI highlight
-        btnWrap.querySelectorAll("button").forEach(b => b.style.outline = "none");
-        btn.style.outline = "2px solid white";
+          // 🔥 re-fetch latest state FROM backend
+          const updated = await fetchCurrentParcelStatuses([marker.parcel_id]);
 
-        console.log("Status updated:", marker.parcel_id, status);
+          // 🔥 apply ONLY backend truth
+          applyStatusesToMarkers({ markers: [marker] }, updated);
+
+          // 🔥 update button highlight AFTER backend confirms
+          btnWrap.querySelectorAll("button").forEach(b => b.style.outline = "none");
+
+          const confirmedStatus = updated[0]?.status;
+          if (confirmedStatus) {
+            const correctBtn = [...btnWrap.children].find(b => b.textContent === confirmedStatus);
+            if (correctBtn) correctBtn.style.outline = "2px solid white";
+          }
+
+        } catch (err) {
+          console.error("Update failed:", err);
+        }
       };
 
       btnWrap.appendChild(btn);
@@ -629,6 +698,44 @@ function attachMarkerPopup(marker, data) {
     activeInfoWindow.open(map, marker);
   });
 }
+
+async function updateParcelStatus(parcel_id, status) {
+  if (!CURRENT_USER) {
+    console.warn("No user selected");
+    return;
+  }
+
+  try {
+    const res = await fetch("https://lightwalk.coryzuber.workers.dev/update-parcel-status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        parcel_id,
+        status,
+        user: CURRENT_USER
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Worker error:", data);
+      return;
+    }
+
+    console.log("✅ Status saved:", data);
+
+  } catch (err) {
+    console.error("❌ Failed to update parcel status:", err);
+  }
+}
+
+window.addEventListener("load", () => {
+  showUserSelectionModal();
+});
+
 </script>
 
 </body>
