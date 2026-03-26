@@ -1,0 +1,3 @@
+wrangler d1 execute lightwalk-db --command="CREATE TABLE parcel_status (id TEXT PRIMARY KEY, parcel_id TEXT NOT NULL, status TEXT, updated_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+
+wrangler d1 execute lightwalk-db --command="CREATE INDEX idx_parcel_created ON parcel_status(parcel_id, created_at DESC);"

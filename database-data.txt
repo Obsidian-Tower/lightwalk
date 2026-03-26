@@ -1,0 +1,10 @@
+To access your new D1 Database in your Worker, add the following snippet to your configuration file:
+{
+  "d1_databases": [
+    {
+      "binding": "lightwalk_db",
+      "database_name": "lightwalk-db",
+      "database_id": "ff04d946-92db-467c-ad85-7b9f0bf00922"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+name = "lightwalk"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lightwalk-db"
+database_id = "ff04d946-92db-467c-ad85-7b9f0bf00922"
