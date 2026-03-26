@@ -372,7 +372,8 @@ async function fetchParcelsForPolygon(polyObj) {
         strokeColor: "#000"
       }
     });
-
+    // 🔥 attach parcel_id to marker
+    marker.parcel_id = a.alt_key;
     marker.addListener("click", () => {
       if (activeInfoWindow) activeInfoWindow.close();
 
@@ -388,6 +389,11 @@ async function fetchParcelsForPolygon(polyObj) {
 
   // 🔥 THIS IS THE KEY LINE
   await sendParcelsToBackend(parcelIds);
+
+  const statuses = await fetchCurrentParcelStatuses(parcelIds);
+
+  // 🔥 apply statuses to markers
+  applyStatusesToMarkers(polyObj, statuses);
 
   applyClustering(polyObj);
 }
@@ -428,6 +434,36 @@ function clearAll() {
   document.getElementById("layerList").innerHTML = "";
 }
 
+function applyStatusesToMarkers(polyObj, statuses) {
+  const statusMap = {};
+
+  statuses.forEach(s => {
+    statusMap[s.parcel_id] = s;
+  });
+
+  polyObj.markers.forEach(marker => {
+    const status = statusMap[marker.parcel_id];
+
+    if (!status) return;
+
+    // 🔥 color logic
+    let color = "#6b7280"; // default gray
+
+    if (status.status === "prospect") color = "#3b82f6"; // blue
+    if (status.status === "contacted") color = "#f59e0b"; // orange
+    if (status.status === "closed") color = "#22c55e"; // green
+
+    marker.setIcon({
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 12,
+      fillColor: color,
+      fillOpacity: 1,
+      strokeWeight: 1,
+      strokeColor: "#000"
+    });
+  });
+}
+
 function getRandomColor() {
   const colors = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#a855f7","#14b8a6"];
   return colors[Math.floor(Math.random() * colors.length)];
@@ -461,6 +497,25 @@ async function sendParcelsToBackend(parcelIds) {
     });
   } catch (err) {
     console.error("Failed to send parcels", err);
+  }
+}
+
+async function fetchCurrentParcelStatuses(parcelIds) {
+  try {
+    const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-current-parcels", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        parcel_ids: parcelIds
+      })
+    });
+
+    return await res.json();
+  } catch (err) {
+    console.error("Failed to fetch statuses", err);
+    return [];
   }
 }
 </script>

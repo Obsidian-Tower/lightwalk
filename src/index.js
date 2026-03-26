@@ -7,6 +7,10 @@ export default {
     if (request.method === "OPTIONS") {
       return handleCORS();
     }
+
+    if (url.pathname === "/get-current-parcels") {
+      return handleGetCurrentParcels(request, env);
+    }
     
     if (url.pathname === "/") {
       return serveStatic("index.html", env);
@@ -133,7 +137,40 @@ async function handleInitParcel(request, env) {
   return json({ success: true, created: true });
 }
 
+async function handleGetCurrentParcels(request, env) {
+  try {
+    const body = await request.json();
+    const parcel_ids = body.parcel_ids;
 
+    if (!parcel_ids || !parcel_ids.length) {
+      return json({ error: "No parcel_ids provided" }, 400);
+    }
+
+    // 🔥 Build dynamic placeholders (?, ?, ?, ...)
+    const placeholders = parcel_ids.map(() => "?").join(",");
+
+    const query = `
+      SELECT ps.*
+      FROM parcel_status ps
+      INNER JOIN (
+        SELECT parcel_id, MAX(created_at) AS max_created
+        FROM parcel_status
+        WHERE parcel_id IN (${placeholders})
+        GROUP BY parcel_id
+      ) latest
+      ON ps.parcel_id = latest.parcel_id
+      AND ps.created_at = latest.max_created
+    `;
+
+    const stmt = env.DB.prepare(query).bind(...parcel_ids);
+    const rows = await stmt.all();
+
+    return json(rows.results);
+
+  } catch (err) {
+    return json({ error: err.message }, 500);
+  }
+}
 // ================================
 // 🧰 HELPERS
 // ================================
