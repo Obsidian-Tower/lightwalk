@@ -54,7 +54,7 @@ async function handleInitParcels(request, env) {
         INSERT INTO parcel_status (id, parcel_id, status, updated_by)
         VALUES (?, ?, 'prospect', 'system')
         ON CONFLICT(parcel_id) DO NOTHING;
-      `).bind(crypto.randomUUID(), pid.toString(), pid.toString())
+      `).bind(crypto.randomUUID(), pid.toString())
     );
   }
 
