@@ -12,6 +12,10 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    if (pathname === "/get-parcels") {
+      return handleGetParcels(request, env);
+    }
+
     try {
       // 🔹 Batch insert (PRIMARY)
       if (request.method === "POST" && url.pathname === "/init-parcels") {
@@ -23,9 +27,6 @@ export default {
         return handleInitParcel(request, env);
       }
 
-      if (pathname === "/get-parcels") {
-        return handleGetParcels(request, env);
-      }s
 
       return json({ error: "Not found" }, 404);
 
