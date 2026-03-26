@@ -39,22 +39,37 @@ export default {
 // ✅ Batch insert (BEST)
 async function handleInitParcels(request, env) {
   try {
-    const body = await request.json();
-    console.log("BODY:", body);
+    const raw = await request.text();
+    console.log("RAW BODY:", raw);
 
-    const { parcel_ids } = body;
+    const body = JSON.parse(raw);
+    console.log("PARSED BODY:", body);
 
+    const parcel_ids = body.parcel_ids;
     console.log("COUNT:", parcel_ids?.length);
 
-    // 🔥 TEST DB ONLY
+    // 🔥 HARD TEST DB
     const test = await env.DB.prepare("SELECT 1 as test").first();
-    console.log("DB TEST:", test);
+    console.log("DB OK:", test);
 
-    return new Response("PASS");
+    // 🔥 INSERT ONE ROW ONLY (critical test)
+    const pid = parcel_ids[0];
+
+    const result = await env.DB.prepare(`
+      INSERT INTO parcel_status (id, parcel_id, status, updated_by)
+      VALUES (?, ?, 'prospect', 'system')
+      ON CONFLICT(parcel_id) DO NOTHING
+    `)
+    .bind(crypto.randomUUID(), pid.toString())
+    .run();
+
+    console.log("INSERT RESULT:", result);
+
+    return new Response("SUCCESS");
 
   } catch (err) {
-    console.error("ERROR:", err);
-    return new Response(err.message, { status: 500 });
+    console.error("FULL ERROR:", err);
+    return new Response(err.stack || err.message, { status: 500 });
   }
 }
 
