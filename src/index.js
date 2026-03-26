@@ -58,18 +58,10 @@ async function handleGetParcels(request, env) {
   });
 }
 
-// ✅ Batch insert (BEST)
 async function handleInitParcels(request, env) {
   try {
-    const raw = await request.text();
-    console.log("RAW BODY:", raw);
-
-    const body = JSON.parse(raw);
-    console.log("PARSED BODY:", body);
-
-    
-    const parcel_ids  = body.parcel_ids;
-    console.log("COUNT:", parcel_ids?.length);
+    const body = await request.json();
+    const parcel_ids = body.parcel_ids;
 
     if (!parcel_ids || !parcel_ids.length) {
       return new Response(JSON.stringify({ error: "No parcel_ids provided" }), {
@@ -87,12 +79,13 @@ async function handleInitParcels(request, env) {
         env.DB.prepare(`
           INSERT INTO parcel_status (id, parcel_id, status, updated_by)
           VALUES (?, ?, 'prospect', 'system')
-          ON CONFLICT(parcel_id) DO NOTHING
-        `).bind(crypto.randomUUID(), String(pid))
+        `).bind(
+          crypto.randomUUID(),
+          String(pid)
+        )
       );
     }
 
-    // 🔥 Run all inserts
     await env.DB.batch(inserts);
 
     return new Response(JSON.stringify({
@@ -107,7 +100,6 @@ async function handleInitParcels(request, env) {
     return new Response(err.stack || err.message, { status: 500 });
   }
 }
-
 
 // ✅ Single insert (fallback)
 async function handleInitParcel(request, env) {
