@@ -450,7 +450,7 @@ document.getElementById("uiToggle").addEventListener("change", (e) => {
 <script>
 async function sendParcelsToBackend(parcelIds) {
   try {
-    await fetch("https://lightwalk.workers.dev/init-parcels", {
+    await fetch("https://lightwalk.coryzuber.workers.dev/init-parcels", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
