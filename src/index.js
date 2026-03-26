@@ -23,6 +23,10 @@ export default {
         return handleInitParcel(request, env);
       }
 
+      if (pathname === "/get-parcels") {
+        return handleGetParcels(request, env);
+      }s
+
       return json({ error: "Not found" }, 404);
 
     } catch (err) {
@@ -35,6 +39,18 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+
+// add to your Worker
+async function handleGetParcels(request, env) {
+  const rows = await env.DB.prepare(`
+    SELECT * FROM parcel_status
+    ORDER BY created_at DESC
+  `).all();
+
+  return new Response(JSON.stringify(rows.results), {
+    headers: { "Content-Type": "application/json" }
+  });
+}
 
 // ✅ Batch insert (BEST)
 async function handleInitParcels(request, env) {
