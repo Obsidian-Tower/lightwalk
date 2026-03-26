@@ -8,7 +8,7 @@ export default {
       return handleCORS();
     }
     
-    if (pathname === "/") {
+    if (url.pathname === "/") {
       return serveStatic("index.html", env);
     }
 
@@ -38,32 +38,39 @@ export default {
 
 // ✅ Batch insert (BEST)
 async function handleInitParcels(request, env) {
-  const { parcel_ids } = await request.json();
+  try {
+    const raw = await request.text();
+    console.log("RAW BODY:", raw);
 
-  if (!parcel_ids || !parcel_ids.length) {
-    return json({ error: "No parcel_ids provided" }, 400);
+    const body = JSON.parse(raw);
+    console.log("PARSED BODY:", body);
+
+    const parcel_ids = body.parcel_ids;
+    console.log("COUNT:", parcel_ids?.length);
+
+    // 🔥 HARD TEST DB
+    const test = await env.DB.prepare("SELECT 1 as test").first();
+    console.log("DB OK:", test);
+
+    // 🔥 INSERT ONE ROW ONLY (critical test)
+    const pid = parcel_ids[0];
+
+    const result = await env.DB.prepare(`
+      INSERT INTO parcel_status (id, parcel_id, status, updated_by)
+      VALUES (?, ?, 'prospect', 'system')
+      ON CONFLICT(parcel_id) DO NOTHING
+    `)
+    .bind(crypto.randomUUID(), pid.toString())
+    .run();
+
+    console.log("INSERT RESULT:", result);
+
+    return new Response("SUCCESS");
+
+  } catch (err) {
+    console.error("FULL ERROR:", err);
+    return new Response(err.stack || err.message, { status: 500 });
   }
-
-  const inserts = [];
-
-  for (const pid of parcel_ids) {
-    if (!pid) continue;
-
-    inserts.push(
-      env.DB.prepare(`
-        INSERT INTO parcel_status (id, parcel_id, status, updated_by)
-        VALUES (?, ?, 'prospect', 'system')
-        ON CONFLICT(parcel_id) DO NOTHING;
-      `).bind(crypto.randomUUID(), pid.toString(), pid.toString())
-    );
-  }
-
-  await env.DB.batch(inserts);
-
-  return json({
-    success: true,
-    inserted_attempted: parcel_ids.length
-  });
 }
 
 
