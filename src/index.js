@@ -8,7 +8,7 @@ export default {
       return handleCORS();
     }
     
-    if (pathname === "/") {
+    if (url.pathname === "/") {
       return serveStatic("index.html", env);
     }
 
