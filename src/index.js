@@ -64,7 +64,7 @@ async function handleInitParcels(request, env) {
     console.log("PARSED BODY:", body);
 
     
-    const { parcel_ids } = await request.json();
+    const parcel_ids  = body.parcel_ids;
     console.log("COUNT:", parcel_ids?.length);
 
     if (!parcel_ids || !parcel_ids.length) {
