@@ -173,6 +173,13 @@
 <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
 <script>
+const STATUS_COLORS = {
+  "prospect": "#facc15",        // yellow
+  "knocked": "#a855f7",         // purple
+  "not interested": "#06b6d4",  // cyan
+  "follow up": "#1e3a8a",       // dark blue
+  "sold": "#14532d"             // dark green
+};  
 let map;
 let drawing = false;
 let currentPath = [];
@@ -346,58 +353,36 @@ async function fetchParcelsForPolygon(polyObj) {
   const res = await fetch(url + "?" + params.toString());
   const json = await res.json();
 
-  polyObj.markers = [];
-
   const parcelIds = [];
+  const parcelData = [];
 
   json.features.forEach(f => {
     const a = f.attributes;
 
-    // ✅ extract parcel id (IMPORTANT)
-    if (a.alt_key) {
-      parcelIds.push(a.alt_key);
-    }
-
-    // keep your marker logic
     if (!a.INSIDE_Y || !a.INSIDE_X) return;
+    if (!a.alt_key) return;
 
-    const marker = new google.maps.Marker({
-      position: { lat: a.INSIDE_Y, lng: a.INSIDE_X },
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 12,
-        fillColor: polyObj.color,
-        fillOpacity: 1,
-        strokeWeight: 1,
-        strokeColor: "#000"
-      }
+    parcelIds.push(a.alt_key);
+
+    parcelData.push({
+      parcel_id: a.alt_key,
+      lat: a.INSIDE_Y,
+      lng: a.INSIDE_X,
+      address: a.situs_1 || "",
+      city: a.add_3 || "",
+      owner: a.name || ""
     });
-    // 🔥 attach parcel_id to marker
-    marker.parcel_id = a.alt_key;
-    marker.addListener("click", () => {
-      if (activeInfoWindow) activeInfoWindow.close();
-
-      activeInfoWindow = new google.maps.InfoWindow({
-        content: `<b>${a.situs_1 || ""}</b><br>${a.add_3 || ""}<br><br>Owner: ${a.name || ""}`
-      });
-
-      activeInfoWindow.open(map, marker);
-    });
-
-    polyObj.markers.push(marker);
   });
 
-  // 🔥 THIS IS THE KEY LINE
+  // 🔥 send to backend (unchanged)
   await sendParcelsToBackend(parcelIds);
 
+  // 🔥 fetch statuses BEFORE creating markers
   const statuses = await fetchCurrentParcelStatuses(parcelIds);
 
-  // 🔥 apply statuses to markers
-  applyStatusesToMarkers(polyObj, statuses);
-
-  applyClustering(polyObj);
+  // 🔥 CREATE markers with correct colors immediately
+  createMarkersWithStatuses(polyObj, parcelData, statuses);
 }
-
 function applyClustering(polyObj) {
   if (polyObj.clusterer) polyObj.clusterer.setMap(null);
 
@@ -438,25 +423,19 @@ function applyStatusesToMarkers(polyObj, statuses) {
   const statusMap = {};
 
   statuses.forEach(s => {
-    statusMap[s.parcel_id] = s;
+    statusMap[s.parcel_id] = s.status;
   });
 
   polyObj.markers.forEach(marker => {
     const status = statusMap[marker.parcel_id];
-
     if (!status) return;
 
-    // 🔥 color logic
-    let color = "#6b7280"; // default gray
-
-    if (status.status === "prospect") color = "#3b82f6"; // blue
-    if (status.status === "contacted") color = "#f59e0b"; // orange
-    if (status.status === "closed") color = "#22c55e"; // green
+    marker.current_status = status;
 
     marker.setIcon({
       path: google.maps.SymbolPath.CIRCLE,
       scale: 12,
-      fillColor: color,
+      fillColor: STATUS_COLORS[status],
       fillOpacity: 1,
       strokeWeight: 1,
       strokeColor: "#000"
@@ -517,6 +496,109 @@ async function fetchCurrentParcelStatuses(parcelIds) {
     console.error("Failed to fetch statuses", err);
     return [];
   }
+}
+
+function createMarkersWithStatuses(polyObj, parcelData, statuses) {
+  const statusMap = {};
+
+  statuses.forEach(s => {
+    statusMap[s.parcel_id] = s.status;
+  });
+
+  polyObj.markers = [];
+
+  parcelData.forEach(p => {
+    const status = statusMap[p.parcel_id] || "prospect";
+    const color = STATUS_COLORS[status] || "#6b7280";
+
+    const marker = new google.maps.Marker({
+      position: { lat: p.lat, lng: p.lng },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 12,
+        fillColor: color,
+        fillOpacity: 1,
+        strokeWeight: 1,
+        strokeColor: "#000"
+      }
+    });
+
+    marker.parcel_id = p.parcel_id;
+    marker.current_status = status;
+
+    attachMarkerPopup(marker, p);
+
+    polyObj.markers.push(marker);
+  });
+
+  applyClustering(polyObj); // 🔥 REQUIRED
+}
+
+function attachMarkerPopup(marker, data) {
+  marker.addListener("click", () => {
+    if (activeInfoWindow) activeInfoWindow.close();
+
+    const container = document.createElement("div");
+    container.style.minWidth = "220px";
+
+    container.innerHTML = `
+      <b>${data.address}</b><br>
+      ${data.city}<br><br>
+      Owner: ${data.owner}<br><br>
+      <div style="font-weight:600;margin-bottom:6px;">Set Status</div>
+    `;
+
+    const btnWrap = document.createElement("div");
+    btnWrap.style.display = "flex";
+    btnWrap.style.flexWrap = "wrap";
+    btnWrap.style.gap = "6px";
+
+    Object.keys(STATUS_COLORS).forEach(status => {
+      const btn = document.createElement("button");
+
+      btn.textContent = status;
+      btn.style.padding = "6px 8px";
+      btn.style.border = "none";
+      btn.style.borderRadius = "6px";
+      btn.style.cursor = "pointer";
+      btn.style.fontSize = "12px";
+      btn.style.color = "white";
+      btn.style.background = STATUS_COLORS[status];
+
+      if (marker.current_status === status) {
+        btn.style.outline = "2px solid white";
+      }
+
+      btn.onclick = () => {
+        marker.current_status = status;
+
+        marker.setIcon({
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: STATUS_COLORS[status],
+          fillOpacity: 1,
+          strokeWeight: 1,
+          strokeColor: "#000"
+        });
+
+        // update UI highlight
+        btnWrap.querySelectorAll("button").forEach(b => b.style.outline = "none");
+        btn.style.outline = "2px solid white";
+
+        console.log("Status updated:", marker.parcel_id, status);
+      };
+
+      btnWrap.appendChild(btn);
+    });
+
+    container.appendChild(btnWrap);
+
+    activeInfoWindow = new google.maps.InfoWindow({
+      content: container
+    });
+
+    activeInfoWindow.open(map, marker);
+  });
 }
 </script>
 
