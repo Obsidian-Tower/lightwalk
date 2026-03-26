@@ -1,3 +1,4 @@
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -5,6 +6,10 @@ export default {
     // ✅ CORS preflight
     if (request.method === "OPTIONS") {
       return handleCORS();
+    }
+    
+    if (pathname === "/") {
+      return serveStatic("index.html", env);
     }
 
     try {
