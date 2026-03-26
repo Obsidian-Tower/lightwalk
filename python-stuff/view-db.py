@@ -23,3 +23,4 @@ if __name__ == "__main__":
 
     print("\n--- INFO ---\n")
     print(df.info())
+    df = df[df['parcel_id'] == "3578244"]

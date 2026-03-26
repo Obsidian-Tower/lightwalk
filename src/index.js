@@ -116,9 +116,13 @@ async function handleInitParcels(request, env) {
       inserts.push(
         env.DB.prepare(`
           INSERT INTO parcel_status (id, parcel_id, status, updated_by)
-          VALUES (?, ?, 'prospect', 'system')
+          SELECT ?, ?, 'prospect', 'system'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM parcel_status WHERE parcel_id = ?
+          )
         `).bind(
           crypto.randomUUID(),
+          String(pid),
           String(pid)
         )
       );
