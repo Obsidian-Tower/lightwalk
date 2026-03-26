@@ -468,7 +468,7 @@ document.getElementById("uiToggle").addEventListener("change", (e) => {
 
 <script>
 async function sendParcelsToBackend(parcelIds) {
-  const CHUNK_SIZE = 300;
+  const CHUNK_SIZE = 80;
 
   for (let i = 0; i < parcelIds.length; i += CHUNK_SIZE) {
     const chunk = parcelIds.slice(i, i + CHUNK_SIZE);
@@ -489,7 +489,7 @@ async function sendParcelsToBackend(parcelIds) {
   }
 }
 async function fetchCurrentParcelStatuses(parcelIds) {
-  const CHUNK_SIZE = 300; // safe under SQLite limit
+  const CHUNK_SIZE = 80; // safe under SQLite limit
   let allResults = [];
 
   for (let i = 0; i < parcelIds.length; i += CHUNK_SIZE) {
