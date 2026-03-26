@@ -468,49 +468,60 @@ document.getElementById("uiToggle").addEventListener("change", (e) => {
 
 <script>
 async function sendParcelsToBackend(parcelIds) {
-  try {
-    await fetch("https://lightwalk.coryzuber.workers.dev/init-parcels", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        parcel_ids: parcelIds
-      })
-    });
-  } catch (err) {
-    console.error("Failed to send parcels", err);
-  }
-}
+  const CHUNK_SIZE = 300;
 
-async function fetchCurrentParcelStatuses(parcelIds) {
-  try {
-    const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-current-parcels", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        parcel_ids: parcelIds
-      })
-    });
+  for (let i = 0; i < parcelIds.length; i += CHUNK_SIZE) {
+    const chunk = parcelIds.slice(i, i + CHUNK_SIZE);
 
-    const data = await res.json();
-
-    // 🔥 HARD GUARD
-    if (!Array.isArray(data)) {
-      console.error("Invalid statuses response:", data);
-      return []; // prevent crash
+    try {
+      await fetch("https://lightwalk.coryzuber.workers.dev/init-parcels", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          parcel_ids: chunk
+        })
+      });
+    } catch (err) {
+      console.error("Failed to send chunk", err);
     }
-
-    return data;
-
-  } catch (err) {
-    console.error("Failed to fetch statuses", err);
-    return [];
   }
 }
+async function fetchCurrentParcelStatuses(parcelIds) {
+  const CHUNK_SIZE = 300; // safe under SQLite limit
+  let allResults = [];
 
+  for (let i = 0; i < parcelIds.length; i += CHUNK_SIZE) {
+    const chunk = parcelIds.slice(i, i + CHUNK_SIZE);
+
+    try {
+      const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-current-parcels", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          parcel_ids: chunk
+        })
+      });
+
+      const data = await res.json();
+
+      if (!Array.isArray(data)) {
+        console.error("Invalid chunk response:", data);
+        continue;
+      }
+
+      allResults = allResults.concat(data);
+
+    } catch (err) {
+      console.error("Chunk fetch failed:", err);
+    }
+  }
+
+  return allResults;
+}
 function createMarkersWithStatuses(polyObj, parcelData, statuses) {
 
   if (!Array.isArray(statuses)) {
