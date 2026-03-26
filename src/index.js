@@ -43,6 +43,7 @@ export default {
 
 // add to your Worker
 async function handleGetParcels(request, env) {
+  
   const rows = await env.DB.prepare(`
     SELECT * FROM parcel_status
     ORDER BY created_at DESC
@@ -56,7 +57,15 @@ async function handleGetParcels(request, env) {
 // ✅ Batch insert (BEST)
 async function handleInitParcels(request, env) {
   try {
+    const raw = await request.text();
+    console.log("RAW BODY:", raw);
+
+    const body = JSON.parse(raw);
+    console.log("PARSED BODY:", body);
+
+    
     const { parcel_ids } = await request.json();
+    console.log("COUNT:", parcel_ids?.length);
 
     if (!parcel_ids || !parcel_ids.length) {
       return new Response(JSON.stringify({ error: "No parcel_ids provided" }), {
