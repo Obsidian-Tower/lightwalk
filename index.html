@@ -303,7 +303,14 @@ function startDrawing() {
   });
 
   overlay.onmousedown = (e) => {
+    // 🔥 always close popup on empty click
+    if (activeInfoWindow) {
+      activeInfoWindow.close();
+      activeInfoWindow = null;
+    }
+
     if (!drawing) return;
+
     addPoint(screenToLatLng(e.clientX, e.clientY));
   };
 
@@ -330,6 +337,13 @@ function finishDrawing() {
     fillOpacity: 0.2,
     strokeWeight: 2,
     map: map
+  });
+
+  polygon.addListener("click", () => {
+    if (activeInfoWindow) {
+      activeInfoWindow.close();
+      activeInfoWindow = null;
+    }
   });
 
   const polyObj = {
