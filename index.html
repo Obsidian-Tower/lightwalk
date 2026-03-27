@@ -202,6 +202,9 @@ function initMap() {
     ]
   });
 
+  // 🔥 ADD THIS LINE
+  getUserLocation();
+
   map.addListener("click", () => {
     if (activeInfoWindow) {
       activeInfoWindow.close();
@@ -475,6 +478,7 @@ async function fetchParcelsForPolygon(polyObj) {
   // 🔥 CREATE markers with correct colors immediately
   createMarkersWithStatuses(polyObj, parcelData, statuses);
 }
+
 function applyClustering(polyObj) {
   if (polyObj.clusterer) polyObj.clusterer.setMap(null);
 
@@ -543,6 +547,7 @@ function applyStatusesToMarkers(polyObj, statuses) {
     });
   });
 }
+
 function getRandomColor() {
   const colors = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#a855f7","#14b8a6"];
   return colors[Math.floor(Math.random() * colors.length)];
@@ -563,6 +568,49 @@ document.getElementById("uiToggle").addEventListener("change", (e) => {
 </script>
 
 <script>
+
+function getUserLocation() {
+  if (!navigator.geolocation) {
+    console.warn("Geolocation not supported");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      console.log("📍 User Location:", lat, lng);
+
+      const userLatLng = { lat, lng };
+
+      // 🔥 center map on user
+      map.setCenter(userLatLng);
+
+      // 🔥 add marker
+      new google.maps.Marker({
+        position: userLatLng,
+        map: map,
+        title: "You are here",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#00ffff",
+          fillOpacity: 1,
+          strokeWeight: 2,
+          strokeColor: "#000"
+        }
+      });
+    },
+    (error) => {
+      console.error("Geolocation error:", error);
+    },
+    {
+      enableHighAccuracy: true
+    }
+  );
+}
+
 async function sendParcelsToBackend(parcelIds) {
   const CHUNK_SIZE = 80;
 
