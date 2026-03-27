@@ -680,11 +680,17 @@ function attachMarkerPopup(marker, data) {
 
     const container = document.createElement("div");
     container.style.minWidth = "220px";
-
+    container.style.fontSize = "14px";
     container.innerHTML = `
-      <b>${data.address}</b><br>
-      ${data.city}<br><br>
-      Owner: ${data.owner}<br><br>
+      <div style="font-size:16px;font-weight:600;">
+        ${data.address}
+      </div>
+
+      <div>${data.city}</div>
+
+      <div style="margin-top:6px;">
+        Owner: ${data.owner}
+      </div>
     `;
 
     const btnWrap = document.createElement("div");
@@ -700,7 +706,7 @@ function attachMarkerPopup(marker, data) {
       btn.style.border = "none";
       btn.style.borderRadius = "6px";
       btn.style.cursor = "pointer";
-      btn.style.fontSize = "12px";
+      btn.style.fontSize = "14px";
       btn.style.color = "white";
       btn.style.background = STATUS_COLORS[status];
 
