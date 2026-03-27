@@ -18,6 +18,10 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    if (request.method === "POST" && url.pathname === "/save-polygon") {
+      return handleSavePolygon(request, env);
+    }
+
     if (url.pathname === "/get-parcels") {
       return handleGetParcels(request, env);
     }
@@ -46,6 +50,36 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+async function handleSavePolygon(request, env) {
+  try {
+    const body = await request.json();
+    const { user, coords } = body;
+
+    if (!user || !coords) {
+      return json({ error: "Missing user or coords" }, 400);
+    }
+
+    // 🔥 insert into DB
+    const result = await env.DB.prepare(`
+      INSERT INTO polygons (user, coords)
+      VALUES (?, ?)
+    `)
+      .bind(user, JSON.stringify(coords))
+      .run();
+
+    // 🔥 get inserted row id
+    const id = result.meta.last_row_id;
+
+    return json({
+      success: true,
+      id
+    });
+
+  } catch (err) {
+    console.error("save-polygon error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 
 async function handleUpdateParcelStatus(request, env) {
   try {

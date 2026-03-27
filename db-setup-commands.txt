@@ -5,3 +5,5 @@ wrangler d1 execute lightwalk-db --command="CREATE INDEX idx_parcel_created ON p
 git remote set-url origin https://github.com/Obsidian-Tower/lightwalk.git
 
 wrangler d1 execute lightwalk-db --command="CREATE UNIQUE INDEX idx_unique_parcel ON parcel_status(parcel_id);"
+
+wrangler d1 execute lightwalk-db --remote --command "CREATE TABLE polygons (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT NOT NULL, coords TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);"

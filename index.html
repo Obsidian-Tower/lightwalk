@@ -218,6 +218,37 @@ function initMap() {
   });
 }
 
+async function savePolygonToBackend(path) {
+  try {
+    const coords = path.map(p => [p.lat(), p.lng()]);
+
+    const res = await fetch("https://lightwalk.coryzuber.workers.dev/save-polygon", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user: CURRENT_USER,
+        coords
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("❌ Save failed:", data);
+      return null;
+    }
+
+    console.log("✅ Polygon saved:", data);
+    return data;
+
+  } catch (err) {
+    console.error("❌ Network error:", err);
+    return null;
+  }
+}
+
 function showUserSelectionModal() {
   const overlay = document.createElement("div");
   overlay.style.position = "fixed";
@@ -329,7 +360,7 @@ function startDrawing() {
   };
 }
 
-function finishDrawing() {
+async function finishDrawing() {
   if (!drawing || currentPath.length < 3) return;
 
   drawing = false;
@@ -355,8 +386,17 @@ function finishDrawing() {
     }
   });
 
+  // 🔥 STEP 1: SAVE TO BACKEND
+  const result = await savePolygonToBackend(currentPath);
+
+  if (!result) {
+    console.warn("Polygon not saved, aborting");
+    return;
+  }
+
+  // 🔥 STEP 2: USE DB ID AS AREA NAME
   const polyObj = {
-    id: polygons.length + 1,
+    id: result.id, // <-- comes from DB
     polygon,
     path: [...currentPath],
     markers: [],
@@ -369,6 +409,7 @@ function finishDrawing() {
 
   if (currentPolyline) currentPolyline.setMap(null);
 
+  // 🔥 STEP 3: NOW UI + GIS
   addLayerUI(polyObj);
   fetchParcelsForPolygon(polyObj);
 }
