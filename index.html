@@ -553,7 +553,10 @@ function addLayerUI(polyObj) {
 }
 
 async function fetchParcelsForPolygon(polyObj) {
-  const coords = polyObj.path.map(p => [p.lng(), p.lat()]);
+  const coords = polyObj.path.map(p => [
+    typeof p.lng === "function" ? p.lng() : p.lng,
+    typeof p.lat === "function" ? p.lat() : p.lat
+  ]);
   coords.push(coords[0]);
 
   const geometry = {
