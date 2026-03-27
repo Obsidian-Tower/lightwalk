@@ -191,6 +191,11 @@ let polygons = [];
 let clusteringEnabled = true;
 let activeInfoWindow = null;
 
+function getUserFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("user");
+}
+
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: { lat: 29.187, lng: -82.140 },
@@ -259,11 +264,11 @@ function showUserSelectionModal() {
     btn.style.color = "white";
 
     btn.onclick = () => {
-      CURRENT_USER = user;
+      const url = new URL(window.location.href);
+      url.searchParams.set("user", user);
 
-      console.log("👤 User selected:", CURRENT_USER);
-
-      document.body.removeChild(overlay);
+      // 🔥 redirect to same page with user param
+      window.location.href = url.toString();
     };
 
     box.appendChild(btn);
@@ -864,7 +869,14 @@ async function updateParcelStatus(parcel_id, status) {
   }
 }
 
-showUserSelectionModal();
+const urlUser = getUserFromURL();
+
+if (urlUser) {
+  CURRENT_USER = urlUser;
+  console.log("👤 User from URL:", CURRENT_USER);
+} else {
+  showUserSelectionModal();
+}
 
 </script>
 
