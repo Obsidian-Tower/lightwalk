@@ -182,7 +182,7 @@ async function handleGetCurrentParcels(request, env) {
 
     // 🔥 Build dynamic placeholders (?, ?, ?, ...)
     const placeholders = parcel_ids.map(() => "?").join(",");
-
+    console.log(placeholders)
     const query = `
       SELECT ps.*
       FROM parcel_status ps
@@ -195,7 +195,9 @@ async function handleGetCurrentParcels(request, env) {
       ON ps.rowid = latest.max_rowid
     `;
 
-    const stmt = env.DB.prepare(query).bind(...parcel_ids);
+    const normalizedIds = parcel_ids.map(id => id.toString());
+
+    const stmt = env.DB.prepare(query).bind(...normalizedIds);
     const rows = await stmt.all();
     console.log(rows)
     return json(rows.results);
