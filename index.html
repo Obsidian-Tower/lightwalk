@@ -611,6 +611,7 @@ async function fetchParcelsForPolygon(polyObj) {
 
   // 🔥 CREATE markers with correct colors immediately
   createMarkersWithStatuses(polyObj, parcelData, statuses);
+
 }
 
 function applyClustering(polyObj) {
@@ -855,6 +856,10 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
   });
 
   applyClustering(polyObj); // 🔥 REQUIRED
+  // 🔥 FORCE RENDER
+  setTimeout(() => {
+    map.setZoom(map.getZoom());
+  }, 0);
 }
 
 async function fetchAllPolygons() {
@@ -872,10 +877,9 @@ async function fetchAllPolygons() {
     data.forEach(row => {
       const color = getRandomColor();
 
-      const path = row.coords.map(([lat, lng]) => ({
-        lat,
-        lng
-      }));
+      const path = row.coords.map(([lat, lng]) =>
+        new google.maps.LatLng(lat, lng)
+      );
 
       const polygon = new google.maps.Polygon({
         paths: path,
