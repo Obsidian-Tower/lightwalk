@@ -488,7 +488,10 @@ function applyStatusesToMarkers(polyObj, statuses) {
   const statusMap = {};
 
   statuses.forEach(s => {
-    statusMap[s.parcel_id] = s.status;
+    statusMap[s.parcel_id] = {
+      status: s.status,
+      created_at: s.created_at
+    };
   });
 
   polyObj.markers.forEach(marker => {
@@ -589,16 +592,30 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
     console.warn("Statuses not array, defaulting to empty");
     statuses = [];
   }
+
   const statusMap = {};
 
+  // 🔥 build full object map (status + timestamp)
   statuses.forEach(s => {
-    statusMap[s.parcel_id] = s.status;
+    statusMap[s.parcel_id] = {
+      status: s.status,
+      created_at: s.created_at
+    };
   });
 
   polyObj.markers = [];
 
   parcelData.forEach(p => {
-    const status = statusMap[p.parcel_id] || "prospect";
+
+    // 🔥 get full object (fallback safe)
+    const statusObj = statusMap[p.parcel_id] || {
+      status: "prospect",
+      created_at: null
+    };
+
+    const status = statusObj.status;
+    const created_at = statusObj.created_at;
+
     const color = STATUS_COLORS[status] || "#6b7280";
 
     const marker = new google.maps.Marker({
@@ -613,8 +630,10 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
       }
     });
 
+    // 🔥 attach ALL needed data to marker
     marker.parcel_id = p.parcel_id;
     marker.current_status = status;
+    marker.created_at = created_at;
 
     attachMarkerPopup(marker, p);
 
@@ -623,7 +642,6 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
 
   applyClustering(polyObj); // 🔥 REQUIRED
 }
-
 function attachMarkerPopup(marker, data) {
   marker.addListener("click", () => {
     if (activeInfoWindow) activeInfoWindow.close();
@@ -644,6 +662,16 @@ function attachMarkerPopup(marker, data) {
       </div>
 
       <div style="font-weight:600;margin-bottom:6px;">Set Status</div>
+
+      <div style="margin-top:10px;font-size:12px;opacity:0.85;">
+        <div><b>Parcel ID:</b> ${marker.parcel_id}</div>
+        <div>
+          <b>Last Updated:</b> 
+          <span id="metaTime">
+            ${marker.created_at ? new Date(marker.created_at).toLocaleString() : "unknown"}
+          </span>
+        </div>
+      </div>
     `;
 
     const btnWrap = document.createElement("div");
