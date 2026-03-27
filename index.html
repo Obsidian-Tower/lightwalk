@@ -635,6 +635,14 @@ function attachMarkerPopup(marker, data) {
       <b>${data.address}</b><br>
       ${data.city}<br><br>
       Owner: ${data.owner}<br><br>
+
+      <div style="margin-bottom:8px;">
+        <b>Current Status:</b> 
+        <span id="statusText" style="color:${STATUS_COLORS[marker.current_status]}; font-weight:600;">
+          ${marker.current_status}
+        </span>
+      </div>
+
       <div style="font-weight:600;margin-bottom:6px;">Set Status</div>
     `;
 
