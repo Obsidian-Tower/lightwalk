@@ -479,6 +479,7 @@ async function finishDrawing() {
 
   // 🔥 STEP 3: NOW UI + GIS
   addLayerUI(polyObj);
+  fetchParcelsForPolygon(polyObj);
 }
 
 function addPoint(latLng) {
@@ -520,7 +521,6 @@ function addLayerUI(polyObj) {
   checkbox.addEventListener("change", () => {
     const visible = checkbox.checked;
 
-    // 🔥 update UI visibility
     polyObj.visible = visible;
     polyObj.polygon.setMap(visible ? map : null);
 
@@ -533,11 +533,16 @@ function addLayerUI(polyObj) {
     // 🔥 update active set
     if (visible) {
       ACTIVE_POLYGONS.add(polyObj.id);
+
+      // 🔥 LOAD PINS IF NOT ALREADY LOADED
+      if (polyObj.markers.length === 0) {
+        fetchParcelsForPolygon(polyObj);
+      }
+
     } else {
       ACTIVE_POLYGONS.delete(polyObj.id);
     }
 
-    // 🔥 send full list to backend
     updateActivePolygons();
   });
 
