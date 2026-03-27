@@ -57,24 +57,36 @@ async function handleUpdateParcelStatus(request, env) {
       return json({ error: "Missing parcel_id, status, or user" }, 400);
     }
 
-    // 🔥 Insert new row (append-only history)
+    const normalizedId = parcel_id.toString();
+
+    // 🔥 INSERT new row
     await env.DB.prepare(`
-      INSERT INTO parcel_status (id, parcel_id, status, updated_by)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO parcel_status (id, parcel_id, status, updated_by, created_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     `)
       .bind(
         crypto.randomUUID(),
-        parcel_id.toString(),
+        normalizedId,
         status,
         user
       )
       .run();
 
+    // 🔥 IMMEDIATELY fetch the TRUE latest row (same logic as your read endpoint)
+    const latest = await env.DB.prepare(`
+      SELECT *
+      FROM parcel_status
+      WHERE parcel_id = ?
+      ORDER BY rowid DESC
+      LIMIT 1
+    `)
+      .bind(normalizedId)
+      .first();
+
+    // 🔥 return actual DB truth
     return json({
       success: true,
-      parcel_id,
-      status,
-      user
+      parcel: latest
     });
 
   } catch (err) {
