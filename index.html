@@ -159,7 +159,7 @@
 </div>
 
 <div class="controls ui-group">
-  <button id="drawBtn" onclick="startDrawing()">Start Drawing</button>
+  <button id="drawBtn" onclick="startDrawing()">Tap to Draw</button>
   <button onclick="finishDrawing()">Finish Polygon</button>
   <button onclick="clearAll()">Clear All</button>
   <button onclick="toggleClustering()" id="clusterBtn">Clustering: ON</button>
@@ -353,6 +353,18 @@ function finishDrawing() {
 function addPoint(latLng) {
   currentPath.push(latLng);
   currentPolyline.setPath(currentPath);
+  // 🔴 draw vertex dot
+  new google.maps.Marker({
+    position: latLng,
+    map: map,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 4, // match strokeWeight (4)
+      fillColor: "#ff0000",
+      fillOpacity: 1,
+      strokeWeight: 0
+    }
+  });
 }
 
 function addLayerUI(polyObj) {
