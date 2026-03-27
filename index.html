@@ -195,7 +195,10 @@ function initMap() {
     center: { lat: 29.187, lng: -82.140 },
     zoom: 16,
     gestureHandling: "greedy",
-    mapTypeId: "satellite"
+    styles: [
+      { featureType: "poi", stylers: [{ visibility: "off" }] },
+      { featureType: "transit", stylers: [{ visibility: "off" }] }
+    ]
   });
 
   map.addListener("click", () => {
