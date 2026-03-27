@@ -495,11 +495,17 @@ function applyStatusesToMarkers(polyObj, statuses) {
   });
 
   polyObj.markers.forEach(marker => {
-    const status = statusMap[marker.parcel_id];
-    if (!status) return;
+    const statusObj = statusMap[marker.parcel_id];
+    if (!statusObj) return;
 
+    const status = statusObj.status;
+    const created_at = statusObj.created_at;
+
+    // 🔥 update marker state
     marker.current_status = status;
+    marker.created_at = created_at;
 
+    // 🔥 update marker color
     marker.setIcon({
       path: google.maps.SymbolPath.CIRCLE,
       scale: 12,
@@ -510,7 +516,6 @@ function applyStatusesToMarkers(polyObj, statuses) {
     });
   });
 }
-
 function getRandomColor() {
   const colors = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#a855f7","#14b8a6"];
   return colors[Math.floor(Math.random() * colors.length)];
@@ -700,14 +705,26 @@ function attachMarkerPopup(marker, data) {
 
         try {
           // 🔥 send update to backend
-          await updateParcelStatus(marker.parcel_id, status);
+          const res = await updateParcelStatus(marker.parcel_id, status);
 
-          // 🔥 re-fetch latest state FROM backend
-          const updated = await fetchCurrentParcelStatuses([marker.parcel_id]);
+          if (!res?.parcel) return;
+
+          const updated = [res.parcel];
 
           // 🔥 apply ONLY backend truth
           applyStatusesToMarkers({ markers: [marker] }, updated);
+          // 🔥 update status text in popup
+          const statusText = container.querySelector("#statusText");
+          if (statusText && updated[0]?.status) {
+            statusText.textContent = updated[0].status;
+            statusText.style.color = STATUS_COLORS[updated[0].status];
+          }
 
+          // 🔥 update timestamp
+          const metaTime = container.querySelector("#metaTime");
+          if (metaTime && updated[0]?.created_at) {
+            metaTime.textContent = new Date(updated[0].created_at).toLocaleString();
+          }
           // 🔥 update button highlight AFTER backend confirms
           btnWrap.querySelectorAll("button").forEach(b => b.style.outline = "none");
 
@@ -761,7 +778,7 @@ async function updateParcelStatus(parcel_id, status) {
       return;
     }
 
-    console.log("✅ Status saved:", data);
+    return data; // 🔥 THIS is the key
 
   } catch (err) {
     console.error("❌ Failed to update parcel status:", err);
