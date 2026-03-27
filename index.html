@@ -848,6 +848,57 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
 
   applyClustering(polyObj); // 🔥 REQUIRED
 }
+
+async function fetchAllPolygons() {
+  try {
+    const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-polygons");
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("❌ Failed to fetch polygons:", data);
+      return;
+    }
+
+    console.log("✅ ALL POLYGONS:", data);
+
+    data.forEach(row => {
+      const color = getRandomColor();
+
+      const path = row.coords.map(([lat, lng]) => ({
+        lat,
+        lng
+      }));
+
+      const polygon = new google.maps.Polygon({
+        paths: path,
+        strokeColor: color,
+        fillColor: color,
+        fillOpacity: 0.2,
+        strokeWeight: 2,
+        map: map
+      });
+
+      const polyObj = {
+        id: row.id,
+        polygon,
+        path,
+        markers: [],
+        clusterer: null,
+        color,
+        visible: true
+      };
+
+      polygons.push(polyObj);
+
+      // 🔥 THIS populates the "Areas" list
+      addLayerUI(polyObj);
+    });
+
+  } catch (err) {
+    console.error("❌ fetchAllPolygons error:", err);
+  }
+}
+
 function attachMarkerPopup(marker, data) {
   marker.addListener("click", () => {
     if (activeInfoWindow) activeInfoWindow.close();
