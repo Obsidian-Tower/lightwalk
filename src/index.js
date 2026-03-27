@@ -197,7 +197,7 @@ async function handleGetCurrentParcels(request, env) {
 
     const stmt = env.DB.prepare(query).bind(...parcel_ids);
     const rows = await stmt.all();
-
+    console.log(rows)
     return json(rows.results);
 
   } catch (err) {
