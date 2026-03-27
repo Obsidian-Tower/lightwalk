@@ -18,6 +18,10 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    if (url.pathname === "/get-polygons") {
+      return handleGetPolygons(request, env);
+    }
+
     if (url.pathname === "/get-active-polygons") {
       return handleGetActivePolygons(request, env);
     }
@@ -58,6 +62,26 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+async function handleGetPolygons(request, env) {
+  try {
+    const rows = await env.DB.prepare(`
+      SELECT id, user, coords, created_at
+      FROM polygons
+      ORDER BY id ASC
+    `).all();
+
+    const results = rows.results.map(row => ({
+      ...row,
+      coords: JSON.parse(row.coords)
+    }));
+
+    return json(results);
+
+  } catch (err) {
+    console.error("get-polygons error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 async function handleSavePolygon(request, env) {
   try {
     const body = await request.json();
