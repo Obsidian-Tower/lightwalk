@@ -534,7 +534,7 @@ function applyStatusesToMarkers(polyObj, statuses) {
     // 🔥 update marker color
     marker.setIcon({
       path: google.maps.SymbolPath.CIRCLE,
-      scale: 12,
+      scale: 16,
       fillColor: STATUS_COLORS[status],
       fillOpacity: 1,
       strokeWeight: 1,
@@ -653,7 +653,7 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
       position: { lat: p.lat, lng: p.lng },
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
-        scale: 12,
+        scale: 16,
         fillColor: color,
         fillOpacity: 1,
         strokeWeight: 1,
