@@ -216,6 +216,32 @@ async function fetchActivePolygons() {
   }
 }
 
+function applyActiveStateToUI() {
+  polygons.forEach(polyObj => {
+    const isActive = ACTIVE_POLYGONS.has(polyObj.id);
+    if (isActive && polyObj.markers.length === 0) {
+      fetchParcelsForPolygon(polyObj);
+    }
+    // 🔥 set visibility
+    polyObj.visible = isActive;
+    polyObj.polygon.setMap(isActive ? map : null);
+
+    if (clusteringEnabled) {
+      polyObj.clusterer?.setMap(isActive ? map : null);
+    } else {
+      polyObj.markers.forEach(m => m.setMap(isActive ? map : null));
+    }
+
+    // 🔥 update checkbox UI
+    const checkboxes = document.querySelectorAll("#layerList input[type='checkbox']");
+
+    checkboxes.forEach(cb => {
+      const id = Number(cb.dataset.id);
+      cb.checked = ACTIVE_POLYGONS.has(id);
+    });
+  });
+}
+
 async function updateActivePolygons() {
   try {
     const list = Array.from(ACTIVE_POLYGONS);
@@ -453,7 +479,6 @@ async function finishDrawing() {
 
   // 🔥 STEP 3: NOW UI + GIS
   addLayerUI(polyObj);
-  fetchParcelsForPolygon(polyObj);
 }
 
 function addPoint(latLng) {
@@ -482,7 +507,7 @@ function addLayerUI(polyObj) {
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = true;
-
+  checkbox.dataset.id = polyObj.id;
   const colorBox = document.createElement("div");
   colorBox.className = "color-box";
   colorBox.style.background = polyObj.color;
@@ -971,8 +996,17 @@ if (urlUser) {
   CURRENT_USER = urlUser;
   console.log("👤 User from URL:", CURRENT_USER);
 
-  fetchActivePolygons().then(() => {
-    console.log("✅ Active polygons ready");
+  // 🔥 STEP 1: load ALL polygons first
+  fetchAllPolygons().then(() => {
+
+    // 🔥 STEP 2: then load active state
+    fetchActivePolygons().then(() => {
+
+      // 🔥 STEP 3: apply active state to UI
+      applyActiveStateToUI();
+
+    });
+
   });
 
 } else {
