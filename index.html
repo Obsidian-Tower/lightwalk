@@ -679,8 +679,7 @@ function attachMarkerPopup(marker, data) {
     if (activeInfoWindow) activeInfoWindow.close();
 
     const container = document.createElement("div");
-    container.style.width = "85vw";
-    container.style.maxWidth = "380px";
+    container.style.minWidth = "220px";
     container.style.fontSize = "14px";
     container.innerHTML = `
       <div style="font-size:16px;font-weight:600;">
