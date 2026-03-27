@@ -18,6 +18,14 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    if (url.pathname === "/get-active-polygons") {
+      return handleGetActivePolygons(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/update-active-polygons") {
+      return handleUpdateActivePolygons(request, env);
+    }
+
     if (request.method === "POST" && url.pathname === "/save-polygon") {
       return handleSavePolygon(request, env);
     }
@@ -77,6 +85,71 @@ async function handleSavePolygon(request, env) {
 
   } catch (err) {
     console.error("save-polygon error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
+async function handleGetActivePolygons(request, env) {
+  try {
+    const url = new URL(request.url);
+    const user = url.searchParams.get("user");
+
+    if (!user) {
+      return json({ error: "Missing user" }, 400);
+    }
+
+    const row = await env.DB.prepare(`
+      SELECT active_polygons
+      FROM user_active_polygons
+      WHERE user = ?
+      LIMIT 1
+    `)
+      .bind(user)
+      .first();
+
+    if (!row) {
+      // 🔥 no row yet → return empty list
+      return json({ active_polygons: [] });
+    }
+
+    return json({
+      active_polygons: JSON.parse(row.active_polygons || "[]")
+    });
+
+  } catch (err) {
+    console.error("get-active-polygons error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
+async function handleUpdateActivePolygons(request, env) {
+  try {
+    const body = await request.json();
+    const { user, active_polygons } = body;
+
+    if (!user || !Array.isArray(active_polygons)) {
+      return json({ error: "Missing user or active_polygons" }, 400);
+    }
+
+    const jsonList = JSON.stringify(active_polygons);
+
+    // 🔥 UPSERT (insert or update)
+    await env.DB.prepare(`
+      INSERT INTO user_active_polygons (user, active_polygons, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user) DO UPDATE SET
+        active_polygons = excluded.active_polygons,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+      .bind(user, jsonList)
+      .run();
+
+    return json({
+      success: true
+    });
+
+  } catch (err) {
+    console.error("update-active-polygons error:", err);
     return json({ error: err.message }, 500);
   }
 }

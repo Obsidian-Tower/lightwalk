@@ -186,7 +186,7 @@ let map;
 let drawing = false;
 let currentPath = [];
 let currentPolyline = null;
-
+let ACTIVE_POLYGONS = new Set();
 let polygons = [];
 let clusteringEnabled = true;
 let activeInfoWindow = null;
@@ -194,6 +194,48 @@ let activeInfoWindow = null;
 function getUserFromURL() {
   const params = new URLSearchParams(window.location.search);
   return params.get("user");
+}
+
+async function fetchActivePolygons() {
+  try {
+    const res = await fetch(`https://lightwalk.coryzuber.workers.dev/get-active-polygons?user=${CURRENT_USER}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Failed to fetch active polygons:", data);
+      return;
+    }
+
+    // 🔥 expect: [1,2,3]
+    ACTIVE_POLYGONS = new Set(data.active_polygons || []);
+
+    console.log("✅ Active polygons:", ACTIVE_POLYGONS);
+
+  } catch (err) {
+    console.error("❌ fetchActivePolygons error:", err);
+  }
+}
+
+async function updateActivePolygons() {
+  try {
+    const list = Array.from(ACTIVE_POLYGONS);
+
+    await fetch("https://lightwalk.coryzuber.workers.dev/update-active-polygons", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user: CURRENT_USER,
+        active_polygons: list
+      })
+    });
+
+    console.log("✅ Active polygons updated:", list);
+
+  } catch (err) {
+    console.error("❌ updateActivePolygons error:", err);
+  }
 }
 
 function initMap() {
@@ -448,9 +490,12 @@ function addLayerUI(polyObj) {
   const label = document.createElement("span");
   label.textContent = `area-${polyObj.id}`;
 
+  checkbox.checked = ACTIVE_POLYGONS.has(polyObj.id);
+
   checkbox.addEventListener("change", () => {
     const visible = checkbox.checked;
 
+    // 🔥 update UI visibility
     polyObj.visible = visible;
     polyObj.polygon.setMap(visible ? map : null);
 
@@ -459,6 +504,16 @@ function addLayerUI(polyObj) {
     } else {
       polyObj.markers.forEach(m => m.setMap(visible ? map : null));
     }
+
+    // 🔥 update active set
+    if (visible) {
+      ACTIVE_POLYGONS.add(polyObj.id);
+    } else {
+      ACTIVE_POLYGONS.delete(polyObj.id);
+    }
+
+    // 🔥 send full list to backend
+    updateActivePolygons();
   });
 
   item.appendChild(checkbox);
@@ -915,6 +970,11 @@ const urlUser = getUserFromURL();
 if (urlUser) {
   CURRENT_USER = urlUser;
   console.log("👤 User from URL:", CURRENT_USER);
+
+  fetchActivePolygons().then(() => {
+    console.log("✅ Active polygons ready");
+  });
+
 } else {
   showUserSelectionModal();
 }

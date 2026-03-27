@@ -1,9 +1,11 @@
-wrangler d1 execute lightwalk-db --command="CREATE TABLE parcel_status (id TEXT PRIMARY KEY, parcel_id TEXT NOT NULL, status TEXT, updated_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+wrangler d1 execute lightwalk-db --remote --command="CREATE TABLE parcel_status (id TEXT PRIMARY KEY, parcel_id TEXT NOT NULL, status TEXT, updated_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
 
-wrangler d1 execute lightwalk-db --command="CREATE INDEX idx_parcel_created ON parcel_status(parcel_id, created_at DESC);"
+wrangler d1 execute lightwalk-db --remote --command="CREATE INDEX idx_parcel_created ON parcel_status(parcel_id, created_at DESC);"
 
 git remote set-url origin https://github.com/Obsidian-Tower/lightwalk.git
 
-wrangler d1 execute lightwalk-db --command="CREATE UNIQUE INDEX idx_unique_parcel ON parcel_status(parcel_id);"
+wrangler d1 execute lightwalk-db --remote --command="CREATE UNIQUE INDEX idx_unique_parcel ON parcel_status(parcel_id);"
 
 wrangler d1 execute lightwalk-db --remote --command "CREATE TABLE polygons (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT NOT NULL, coords TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);"
+
+wrangler d1 execute lightwalk-db --remote --command "CREATE TABLE user_active_polygons (user TEXT PRIMARY KEY, active_polygons TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);"
