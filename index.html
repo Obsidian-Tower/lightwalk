@@ -835,6 +835,7 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
 
     const marker = new google.maps.Marker({
       position: { lat: p.lat, lng: p.lng },
+      map: map, 
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
         scale: 15,
