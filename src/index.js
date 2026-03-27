@@ -187,13 +187,12 @@ async function handleGetCurrentParcels(request, env) {
       SELECT ps.*
       FROM parcel_status ps
       INNER JOIN (
-        SELECT parcel_id, MAX(created_at) AS max_created
+        SELECT parcel_id, MAX(rowid) AS max_rowid
         FROM parcel_status
         WHERE parcel_id IN (${placeholders})
         GROUP BY parcel_id
       ) latest
-      ON ps.parcel_id = latest.parcel_id
-      AND ps.created_at = latest.max_created
+      ON ps.rowid = latest.max_rowid
     `;
 
     const stmt = env.DB.prepare(query).bind(...parcel_ids);
