@@ -684,25 +684,6 @@ function attachMarkerPopup(marker, data) {
       <b>${data.address}</b><br>
       ${data.city}<br><br>
       Owner: ${data.owner}<br><br>
-
-      <div style="margin-bottom:8px;">
-        <b>Current Status:</b> 
-        <span id="statusText" style="color:${STATUS_COLORS[marker.current_status]}; font-weight:600;">
-          ${marker.current_status}
-        </span>
-      </div>
-
-      <div style="font-weight:600;margin-bottom:6px;">Set Status</div>
-
-      <div style="margin-top:10px;font-size:12px;opacity:0.85;">
-        <div><b>Parcel ID:</b> ${marker.parcel_id}</div>
-        <div>
-          <b>Last Updated:</b> 
-          <span id="metaTime">
-            ${marker.created_at ? new Date(marker.created_at).toLocaleString() : "unknown"}
-          </span>
-        </div>
-      </div>
     `;
 
     const btnWrap = document.createElement("div");
@@ -769,6 +750,23 @@ function attachMarkerPopup(marker, data) {
     });
 
     container.appendChild(btnWrap);
+
+    const meta = document.createElement("div");
+    meta.style.marginTop = "10px";
+    meta.style.fontSize = "12px";
+    meta.style.opacity = "0.85";
+
+    meta.innerHTML = `
+      <div><b>Parcel ID:</b> ${marker.parcel_id}</div>
+      <div>
+        <b>Last Updated:</b> 
+        <span id="metaTime">
+          ${marker.created_at ? new Date(marker.created_at).toLocaleString() : "unknown"}
+        </span>
+      </div>
+    `;
+
+container.appendChild(meta);
 
     activeInfoWindow = new google.maps.InfoWindow({
       content: container
