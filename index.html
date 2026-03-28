@@ -704,48 +704,79 @@ document.getElementById("uiToggle").addEventListener("change", (e) => {
 
 <script>
 
+let userMarker = null;
+let userAccuracyCircle = null;
+
 function getUserLocation() {
   if (!navigator.geolocation) {
     console.warn("Geolocation not supported");
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
+  navigator.geolocation.watchPosition(
     (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
-
-      console.log("📍 User Location:", lat, lng);
+      const accuracy = position.coords.accuracy;
 
       const userLatLng = { lat, lng };
 
-      // 🔥 center map on user
-      map.setCenter(userLatLng);
+      console.log("📍 Updated Location:", lat, lng, "±", accuracy, "m");
 
-      // 🔥 add marker
-      new google.maps.Marker({
-        position: userLatLng,
-        map: map,
-        title: "You are here",
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 2,
-          fillColor: "#0000ff",
-          fillOpacity: .6,
-          strokeWeight: 2,
-          strokeColor: "#000"
+      // 🔥 FIRST TIME: create marker + circle
+      if (!userMarker) {
+        userMarker = new google.maps.Marker({
+          position: userLatLng,
+          map: map,
+          title: "You are here",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: "#2563eb",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#000"
+          }
+        });
+
+        userAccuracyCircle = new google.maps.Circle({
+          center: userLatLng,
+          radius: accuracy,
+          map: map,
+          fillColor: "#2563eb",
+          fillOpacity: 0.15,
+          strokeColor: "#2563eb",
+          strokeOpacity: 0.4,
+          strokeWeight: 1
+        });
+
+        // optional: center once
+        map.setCenter(userLatLng);
+
+      } else {
+        // 🔥 UPDATE existing objects (NO recreation)
+        userMarker.setPosition(userLatLng);
+
+        if (userAccuracyCircle) {
+          userAccuracyCircle.setCenter(userLatLng);
+          userAccuracyCircle.setRadius(accuracy);
         }
-      });
+      }
+
+      // 🔥 OPTIONAL: smooth follow (uncomment if desired)
+      // map.panTo(userLatLng);
+
     },
     (error) => {
       console.error("Geolocation error:", error);
     },
     {
-      enableHighAccuracy: true
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 5000
     }
   );
 }
-
 async function sendParcelsToBackend(parcelIds) {
   const CHUNK_SIZE = 80;
 
