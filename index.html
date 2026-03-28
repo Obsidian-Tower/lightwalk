@@ -153,7 +153,7 @@
 <!-- 🔥 Toggle -->
 <div id="uiToggleWrapper">
   <label class="switch">
-    <input type="checkbox" id="uiToggle" checked>
+    <input type="checkbox" id="uiToggle">
     <span class="slider"></span>
   </label>
 </div>
@@ -688,13 +688,20 @@ function getRandomColor() {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-document.getElementById("uiToggle").addEventListener("change", (e) => {
-  const visible = e.target.checked;
+const toggle = document.getElementById("uiToggle");
 
+function applyUIToggle(visible) {
   document.querySelectorAll(".ui-group").forEach(el => {
     el.style.opacity = visible ? "1" : "0";
     el.style.pointerEvents = visible ? "auto" : "none";
   });
+}
+
+// 🔥 default OFF on load
+applyUIToggle(false);
+
+toggle.addEventListener("change", (e) => {
+  applyUIToggle(e.target.checked);
 });
 </script>
 
