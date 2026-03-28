@@ -269,6 +269,10 @@ function initMap() {
     center: { lat: 29.187, lng: -82.140 },
     zoom: 16,
     gestureHandling: "greedy",
+
+    // 🔥 THIS is the key
+    mapTypeId: "hybrid",
+
     styles: [
       { featureType: "poi", stylers: [{ visibility: "off" }] },
       { featureType: "transit", stylers: [{ visibility: "off" }] }
