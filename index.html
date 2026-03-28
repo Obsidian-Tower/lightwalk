@@ -981,17 +981,89 @@ function attachMarkerPopup(marker, data) {
     const container = document.createElement("div");
     container.style.minWidth = "220px";
     container.style.fontSize = "14px";
-    container.innerHTML = `
-      <div style="font-size:16px;font-weight:600;">
-        ${data.address}
-      </div>
+    
+    
+    
+    const addressRow = document.createElement("div");
+    addressRow.style.display = "flex";
+    addressRow.style.alignItems = "center";
+    addressRow.style.gap = "6px";
+    addressRow.style.marginBottom = "4px";
 
-      <div>${data.city}</div>
+    // 🔥 address button
+    const addressBtn = document.createElement("button");
+    addressBtn.textContent = data.address || "No Address";
+    addressBtn.style.flex = "1";
+    addressBtn.style.textAlign = "left";
+    addressBtn.style.background = "#f3f4f6"; // very light grey
+    addressBtn.style.border = "1px solid #374151"; // dark grey outline
+    addressBtn.style.borderRadius = "6px";
+    addressBtn.style.padding = "6px 8px";
+    addressBtn.style.cursor = "pointer";
+    addressBtn.style.color = "#111";
 
-      <div style="margin-top:6px;">
-        Owner: ${data.owner}
-      </div>
+    // 🔥 copy behavior
+    addressBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(data.address || "");
+        addressBtn.style.background = "#d1fae5"; // feedback (light green)
+        setTimeout(() => {
+          addressBtn.style.background = "#f3f4f6";
+        }, 600);
+      } catch (err) {
+        console.error("Copy failed:", err);
+      }
+    };
+
+    addressRow.appendChild(addressBtn);
+
+    // 🔥 OPTIONAL copy icon (only if available)
+    const copyIcon = document.createElement("div");
+    copyIcon.style.width = "16px";
+    copyIcon.style.height = "16px";
+    copyIcon.style.position = "relative";
+
+    // simple overlapping rectangles icon
+    copyIcon.innerHTML = `
+      <div style="
+        position:absolute;
+        width:12px;
+        height:12px;
+        border:1px solid #374151;
+        top:2px;
+        left:2px;
+        background:white;
+      "></div>
+      <div style="
+        position:absolute;
+        width:12px;
+        height:12px;
+        border:1px solid #374151;
+        top:0;
+        left:0;
+        background:white;
+      "></div>
     `;
+
+    // 🔥 clicking icon also copies
+    copyIcon.style.cursor = "pointer";
+    copyIcon.onclick = addressBtn.onclick;
+
+    addressRow.appendChild(copyIcon);
+
+    // 🔥 build rest of popup
+    const cityDiv = document.createElement("div");
+    cityDiv.textContent = data.city;
+
+    const ownerDiv = document.createElement("div");
+    ownerDiv.style.marginTop = "6px";
+    ownerDiv.textContent = `Owner: ${data.owner}`;
+
+    container.appendChild(addressRow);
+    container.appendChild(cityDiv);
+    container.appendChild(ownerDiv);
+
+
 
     const btnWrap = document.createElement("div");
     btnWrap.style.display = "flex";
