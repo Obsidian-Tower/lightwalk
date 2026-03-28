@@ -124,7 +124,7 @@ async function handleGetLocations(env) {
       FROM user_locations
       WHERE updated_at > ?
     `)
-      .bind(now - 10)
+      .bind(now - 100)
       .all();
 
     return json(result.results || []);
