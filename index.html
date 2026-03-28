@@ -985,45 +985,35 @@ function attachMarkerPopup(marker, data) {
     
     
     const addressRow = document.createElement("div");
-    addressRow.style.display = "flex";
-    addressRow.style.alignItems = "center";
-    addressRow.style.gap = "6px";
     addressRow.style.marginBottom = "4px";
 
-    // 🔥 address button
+    // 🔥 address button (full row)
     const addressBtn = document.createElement("button");
-    addressBtn.textContent = data.address || "No Address";
-    addressBtn.style.flex = "1";
-    addressBtn.style.textAlign = "left";
-    addressBtn.style.background = "#f3f4f6"; // very light grey
+    addressBtn.style.display = "flex";
+    addressBtn.style.alignItems = "center";
+    addressBtn.style.justifyContent = "space-between";
+    addressBtn.style.width = "100%";
+    addressBtn.style.background = "#f3f4f6"; // light grey
     addressBtn.style.border = "1px solid #374151"; // dark grey outline
     addressBtn.style.borderRadius = "6px";
     addressBtn.style.padding = "6px 8px";
     addressBtn.style.cursor = "pointer";
     addressBtn.style.color = "#111";
+    addressBtn.style.fontSize = "14px";
 
-    // 🔥 copy behavior
-    addressBtn.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(data.address || "");
-        addressBtn.style.background = "#d1fae5"; // feedback (light green)
-        setTimeout(() => {
-          addressBtn.style.background = "#f3f4f6";
-        }, 600);
-      } catch (err) {
-        console.error("Copy failed:", err);
-      }
-    };
+    // 🔥 text
+    const addressText = document.createElement("span");
+    addressText.textContent = data.address || "No Address";
+    addressText.style.textAlign = "left";
+    addressText.style.flex = "1";
 
-    addressRow.appendChild(addressBtn);
-
-    // 🔥 OPTIONAL copy icon (only if available)
+    // 🔥 copy icon (inside button)
     const copyIcon = document.createElement("div");
     copyIcon.style.width = "16px";
     copyIcon.style.height = "16px";
     copyIcon.style.position = "relative";
+    copyIcon.style.marginLeft = "8px";
 
-    // simple overlapping rectangles icon
     copyIcon.innerHTML = `
       <div style="
         position:absolute;
@@ -1045,13 +1035,28 @@ function attachMarkerPopup(marker, data) {
       "></div>
     `;
 
-    // 🔥 clicking icon also copies
-    copyIcon.style.cursor = "pointer";
-    copyIcon.onclick = addressBtn.onclick;
+    // 🔥 copy behavior (entire button clickable)
+    addressBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(data.address || "");
 
-    addressRow.appendChild(copyIcon);
+        // quick feedback flash
+        addressBtn.style.background = "#d1fae5";
+        setTimeout(() => {
+          addressBtn.style.background = "#f3f4f6";
+        }, 600);
 
-    // 🔥 build rest of popup
+      } catch (err) {
+        console.error("Copy failed:", err);
+      }
+    };
+
+    // assemble
+    addressBtn.appendChild(addressText);
+    addressBtn.appendChild(copyIcon);
+    addressRow.appendChild(addressBtn);
+
+    // rest of popup
     const cityDiv = document.createElement("div");
     cityDiv.textContent = data.city;
 
@@ -1063,7 +1068,7 @@ function attachMarkerPopup(marker, data) {
     container.appendChild(cityDiv);
     container.appendChild(ownerDiv);
 
-
+    
 
     const btnWrap = document.createElement("div");
     btnWrap.style.display = "flex";
