@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Watch Users</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script>
+let map;
+
+const userMarkers = new Map();
+const userCircles = new Map();
+
+const USER_COLORS = [
+  "#ef4444", // red
+  "#22c55e", // green
+  "#f59e0b", // orange
+  "#a855f7", // purple
+  "#14b8a6", // teal
+  "#e11d48"  // pink
+];
+
+function getUserColor(user) {
+  let hash = 0;
+  for (let i = 0; i < user.length; i++) {
+    hash = user.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+}
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 29.187, lng: -82.140 },
+    zoom: 16,
+    mapTypeId: "hybrid", // 🔥 satellite + labels
+    gestureHandling: "greedy",
+    styles: [
+      { featureType: "poi", stylers: [{ visibility: "off" }] },
+      { featureType: "transit", stylers: [{ visibility: "off" }] }
+    ]
+  });
+
+  startTrackingUsers();
+}
+
+function startTrackingUsers() {
+  setInterval(async () => {
+    try {
+      const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-locations");
+      const users = await res.json();
+
+      const activeUsers = new Set();
+
+      users.forEach(u => {
+        const { user, lat, lng, accuracy } = u;
+
+        if (!user || lat == null || lng == null) return;
+
+        const position = { lat, lng };
+        const color = getUserColor(user);
+
+        activeUsers.add(user);
+
+        // 🔥 Marker
+        if (!userMarkers.has(user)) {
+          const marker = new google.maps.Marker({
+            position,
+            map: map,
+            title: user,
+            label: {
+              text: user,
+              color: "#fff",
+              fontSize: "12px"
+            },
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 6,
+              fillColor: color,
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#000"
+            }
+          });
+
+          userMarkers.set(user, marker);
+        } else {
+          userMarkers.get(user).setPosition(position);
+        }
+
+        // 🔥 Accuracy circle
+        if (!userCircles.has(user)) {
+          const circle = new google.maps.Circle({
+            center: position,
+            radius: accuracy || 10,
+            map: map,
+            fillColor: color,
+            fillOpacity: 0.12,
+            strokeColor: color,
+            strokeOpacity: 0.3,
+            strokeWeight: 1
+          });
+
+          userCircles.set(user, circle);
+        } else {
+          const circle = userCircles.get(user);
+          circle.setCenter(position);
+          circle.setRadius(accuracy || 10);
+        }
+      });
+
+      // 🔥 Cleanup inactive users
+      for (const [user, marker] of userMarkers.entries()) {
+        if (!activeUsers.has(user)) {
+          marker.setMap(null);
+          userMarkers.delete(user);
+        }
+      }
+
+      for (const [user, circle] of userCircles.entries()) {
+        if (!activeUsers.has(user)) {
+          circle.setMap(null);
+          userCircles.delete(user);
+        }
+      }
+
+    } catch (err) {
+      console.warn("Tracking error:", err);
+    }
+  }, 2000);
+}
+</script>
+
+<!-- Google Maps API -->
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGFCA70J_CRFo-FxwoSpN3ZjpMicNeVfM&callback=initMap">
+</script>
+
+</body>
+</html>
