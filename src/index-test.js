@@ -12,6 +12,16 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    // 🔥 USER LOCATION UPDATE
+    if (request.method === "POST" && url.pathname === "/update-location") {
+      return handleUpdateLocation(request, env);
+    }
+
+    // 🔥 GET ALL ACTIVE USERS
+    if (request.method === "GET" && url.pathname === "/get-locations") {
+      return handleGetLocations(env);
+    }
+
     try {
       // 🔹 Batch insert (PRIMARY)
       if (request.method === "POST" && url.pathname === "/init-parcels") {
@@ -35,6 +45,47 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+
+async function handleUpdateLocation(request, env) {
+  try {
+    const body = await request.json();
+
+    const {
+      user,
+      lat,
+      lng,
+      accuracy = null,
+      heading = null,
+      speed = null
+    } = body;
+
+    if (!user || lat == null || lng == null) {
+      return json({ error: "Missing required fields" }, 400);
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+
+    await env.DB.prepare(`
+      INSERT INTO user_locations (user, lat, lng, accuracy, heading, speed, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user) DO UPDATE SET
+        lat = excluded.lat,
+        lng = excluded.lng,
+        accuracy = excluded.accuracy,
+        heading = excluded.heading,
+        speed = excluded.speed,
+        updated_at = excluded.updated_at
+    `)
+      .bind(user, lat, lng, accuracy, heading, speed, now)
+      .run();
+
+    return json({ success: true });
+
+  } catch (err) {
+    console.error("update-location error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 
 // ✅ Batch insert (BEST)
 async function handleInitParcels(request, env) {
