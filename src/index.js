@@ -27,7 +27,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/get-locations") {
       return handleGetLocations(env);
     }
-    
+
     if (url.pathname === "/get-polygons") {
       return handleGetPolygons(request, env);
     }
@@ -110,6 +110,27 @@ async function handleUpdateLocation(request, env) {
 
   } catch (err) {
     console.error("update-location error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
+async function handleGetLocations(env) {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+
+    // 🔥 only return users active in last 10 seconds
+    const result = await env.DB.prepare(`
+      SELECT user, lat, lng, accuracy, heading, speed, updated_at
+      FROM user_locations
+      WHERE updated_at > ?
+    `)
+      .bind(now - 10)
+      .all();
+
+    return json(result.results || []);
+
+  } catch (err) {
+    console.error("get-locations error:", err);
     return json({ error: err.message }, 500);
   }
 }
