@@ -142,6 +142,15 @@
     .ui-group {
       transition: opacity 0.25s ease;
     }
+
+    .gm-style .gm-style-iw + div,
+    .gm-style span {
+      text-shadow:
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px  1px 0 #000,
+        1px  1px 0 #000;
+    }
   </style>
 </head>
 
@@ -556,6 +565,14 @@ function addLayerUI(polyObj) {
   list.appendChild(item);
 }
 
+function getAddressNumber(address) {
+  if (!address) return null;
+
+  // match leading number(s)
+  const match = address.trim().match(/^(\d+)/);
+  return match ? match[1] : null;
+}
+
 async function fetchParcelsForPolygon(polyObj) {
   const coords = polyObj.path.map(p => [
     typeof p.lng === "function" ? p.lng() : p.lng,
@@ -895,9 +912,13 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
 
     const color = STATUS_COLORS[status] || "#6b7280";
 
+    const addressNumber = getAddressNumber(p.address);
+
     const marker = new google.maps.Marker({
       position: { lat: p.lat, lng: p.lng },
-      map: map, 
+      map: map,
+
+      // 🔥 base pin
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
         scale: 15,
@@ -905,7 +926,17 @@ function createMarkersWithStatuses(polyObj, parcelData, statuses) {
         fillOpacity: 1,
         strokeWeight: 1,
         strokeColor: "#000"
-      }
+      },
+
+      // 🔥 ONLY add label if number exists
+      ...(addressNumber && {
+        label: {
+          text: addressNumber,
+          color: "#ffffff",
+          fontSize: "12px",
+          fontWeight: "600"
+        }
+      })
     });
 
     // 🔥 attach ALL needed data to marker
