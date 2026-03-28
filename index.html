@@ -719,7 +719,7 @@ let userMarker = null;
 let userAccuracyCircle = null;
 
 let lastLocationSentAt = 0;
-const LOCATION_SEND_INTERVAL = 2000; // 2 seconds
+const LOCATION_SEND_INTERVAL = 20000; // 2 seconds
 
 function getUserLocation() {
   if (!navigator.geolocation) {
