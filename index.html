@@ -1198,8 +1198,11 @@
 
       notesContainer.appendChild(notesThread);
       notesContainer.appendChild(inputRow);
-
       container.appendChild(notesContainer);
+      setTimeout(() => {
+        input.blur();
+        document.activeElement?.blur();
+      }, 0);
 
       
       
