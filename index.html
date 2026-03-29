@@ -168,6 +168,7 @@
 
       .note-row {
         display: flex;
+        justify-content: flex-start; /* 🔥 always left */
         width: 100%;
       }
 
@@ -186,16 +187,6 @@
       .note-left .note-bubble {
         background: #e5e7eb; /* light grey */
         color: #111827; /* dark text */
-      }
-
-      .note-right {
-        justify-content: flex-end;
-      }
-
-      .note-right .note-bubble {
-        background: #2563eb;
-        color: white;
-        border-top-right-radius: 4px;
       }
 
       .note-meta {
@@ -1098,6 +1089,15 @@
 
     const bubble = document.createElement("div");
     bubble.className = "note-bubble";
+
+    // 🔥 color difference only (no alignment change)
+    if (isMe) {
+      bubble.style.background = "#2563eb";
+      bubble.style.color = "white";
+    } else {
+      bubble.style.background = "#e5e7eb";
+      bubble.style.color = "#111827";
+    }
     bubble.textContent = note.note;
 
     bubbleWrap.appendChild(bubble);
