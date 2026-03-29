@@ -1150,6 +1150,16 @@
       const inputRow = document.createElement("div");
       inputRow.className = "notes-input";
 
+      // 🔥 focus trap (prevents auto keyboard)
+      const focusTrap = document.createElement("div");
+      focusTrap.setAttribute("tabindex", "0");
+
+      focusTrap.style.position = "absolute";
+      focusTrap.style.opacity = "0";
+      focusTrap.style.height = "0";
+      focusTrap.style.width = "0";
+      focusTrap.style.pointerEvents = "none";
+
       const input = document.createElement("input");
       input.placeholder = "Add note...";
 
@@ -1193,19 +1203,13 @@
           sendBtn.textContent = "Send";
         }
       };
+      inputRow.appendChild(focusTrap);
       inputRow.appendChild(input);
       inputRow.appendChild(sendBtn);
 
       notesContainer.appendChild(notesThread);
       notesContainer.appendChild(inputRow);
       container.appendChild(notesContainer);
-      setTimeout(() => {
-        input.blur();
-        document.activeElement?.blur();
-      }, 0);
-
-      
-      
       
       const addressRow = document.createElement("div");
       addressRow.style.marginBottom = "4px";
