@@ -149,10 +149,10 @@
         display: flex;
         flex-direction: column;
         height: 180px;
-        border: 1px solid #374151;
+        border: 1px solid #d1d5db;
         border-radius: 8px;
         margin-bottom: 8px;
-        background: #111;
+        background: #ffffff; /* 🔥 light */
         overflow: hidden;
       }
 
@@ -163,6 +163,7 @@
         display: flex;
         flex-direction: column;
         gap: 6px;
+        background: #f9fafb;
       }
 
       .note-row {
@@ -183,9 +184,8 @@
       }
 
       .note-left .note-bubble {
-        background: #374151;
-        color: white;
-        border-top-left-radius: 4px;
+        background: #e5e7eb; /* light grey */
+        color: #111827; /* dark text */
       }
 
       .note-right {
@@ -200,13 +200,12 @@
 
       .note-meta {
         font-size: 10px;
-        opacity: 0.7;
-        margin-bottom: 2px;
+        opacity: 0.6;
+        color: #374151;
       }
 
       .notes-input {
-        display: flex;
-        border-top: 1px solid #374151;
+        background: #ffffff;
       }
 
       .notes-input input {
@@ -215,8 +214,8 @@
         border: none;
         outline: none;
         font-size: 12px;
-        background: #111;
-        color: white;
+        background: #ffffff;
+        color: #111827;
       }
 
       .notes-input button {
