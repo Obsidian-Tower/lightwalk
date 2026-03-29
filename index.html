@@ -148,7 +148,7 @@
       .notes-container {
         display: flex;
         flex-direction: column;
-        height: 90px;
+        height: 110px;
         border: 1px solid #d1d5db;
         border-radius: 8px;
         margin-bottom: 8px;
@@ -196,11 +196,16 @@
       }
 
       .notes-input {
+        display: flex;
+        align-items: center;
+        width: 100%;          /* 🔥 important */
+        gap: 6px;             /* optional spacing */
         background: #ffffff;
       }
 
       .notes-input input {
         flex: 1;
+        min-width: 0;         /* 🔥 CRITICAL (fixes flex overflow bugs) */
         padding: 6px;
         border: none;
         outline: none;
@@ -232,6 +237,11 @@
       }
       .gm-style .gm-style-iw {
         padding: 0 !important;
+      }
+      .gm-style .gm-style-iw-t {
+        padding: 0 !important;
+        margin: 0 !important;
+        top: 0 !important;
       }
 
     </style>
