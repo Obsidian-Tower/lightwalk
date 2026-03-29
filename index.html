@@ -217,6 +217,23 @@
         cursor: pointer;
       }
 
+      .gm-ui-hover-effect {
+        display: none !important;
+      }
+      .gm-style .gm-style-iw-c {
+        padding: 0 !important;
+        border-radius: 8px !important;
+      }
+
+      .gm-style .gm-style-iw-d {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+      }
+      .gm-style .gm-style-iw {
+        padding: 0 !important;
+      }
+
     </style>
   </head>
 
@@ -254,7 +271,8 @@
     "not interested": "#06b7d6",  // cyan
     "follow up": "#0419ba",       // dark blue
     "sold": "#08a112",             // dark green
-    "installed":"#07ed0f"
+    "installed":"#07ed0f",
+    "vacant":"#fc7447"
   };  
   let CURRENT_USER = null;
   let map;
@@ -523,15 +541,10 @@
       fillColor: color,
       fillOpacity: 0.2,
       strokeWeight: 2,
-      map: map
+      map: map,
+      clickable: false
     });
 
-    polygon.addListener("click", () => {
-      if (activeInfoWindow) {
-        activeInfoWindow.close();
-        activeInfoWindow = null;
-      }
-    });
 
     // 🔥 STEP 1: SAVE TO BACKEND
     const result = await savePolygonToBackend(currentPath);
@@ -1047,7 +1060,8 @@
           fillColor: color,
           fillOpacity: 0.2,
           strokeWeight: 2,
-          map: map
+          map: map,
+          clickable: false
         });
 
         const polyObj = {
@@ -1110,6 +1124,8 @@
       if (activeInfoWindow) activeInfoWindow.close();
 
       const container = document.createElement("div");
+      container.style.padding = "5px"; // 🔥 exact spacing you want
+      container.style.margin = "0";
       // 🔥 NOTES UI (TOP SECTION)
 
       const notesContainer = document.createElement("div");
