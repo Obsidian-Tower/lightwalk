@@ -1464,6 +1464,77 @@
   }
 
   </script>
+  <script>
+  (function () {
+    const consoleDiv = document.getElementById("dev-console");
 
+    function formatArg(arg) {
+      if (typeof arg === "object") {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch {
+          return "[Object]";
+        }
+      }
+      return String(arg);
+    }
+
+    function write(type, args) {
+      if (!consoleDiv) return;
+
+      const line = document.createElement("div");
+
+      const colors = {
+        log: "#00ffcc",
+        error: "#ff5555",
+        warn: "#ffaa00",
+        info: "#66aaff"
+      };
+
+      line.style.color = colors[type] || "#fff";
+      line.style.marginBottom = "2px";
+
+      line.textContent = `[${type.toUpperCase()}] ` + args.map(formatArg).join(" ");
+
+      consoleDiv.appendChild(line);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    ["log", "error", "warn", "info"].forEach(type => {
+      const original = console[type];
+      console[type] = function (...args) {
+        write(type, args);
+        original.apply(console, args);
+      };
+    });
+
+    // capture global errors
+    window.onerror = function (msg, src, line, col) {
+      console.error("Uncaught:", msg, "at", line + ":" + col);
+    };
+
+    window.onunhandledrejection = function (e) {
+      console.error("Promise error:", e.reason);
+    };
+
+  })();
+  </script>
+  <div id="dev-console" class="ui-group" style="
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 35%;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.95);
+    color: #00ffcc;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 8px;
+    box-sizing: border-box;
+    z-index: 99999;
+    border-top: 1px solid #222;
+    display: none;
+  "></div>
   </body>
   </html>
