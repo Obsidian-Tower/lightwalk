@@ -1084,7 +1084,7 @@
     const isMe = note.user === CURRENT_USER;
 
     const row = document.createElement("div");
-    row.className = "note-row " + (isMe ? "note-right" : "note-left");
+    row.className = "note-row note-left"; // 🔥 always left
 
     const bubbleWrap = document.createElement("div");
 
