@@ -1081,6 +1081,31 @@
     }
   }
 
+  function renderNote(notesThread, note) {
+    const isMe = note.user === CURRENT_USER;
+
+    const row = document.createElement("div");
+    row.className = "note-row " + (isMe ? "note-right" : "note-left");
+
+    const bubbleWrap = document.createElement("div");
+
+    // meta for others
+    if (!isMe) {
+      const meta = document.createElement("div");
+      meta.className = "note-meta";
+      meta.textContent = `${note.user} • ${new Date(note.created_at).toLocaleTimeString()}`;
+      bubbleWrap.appendChild(meta);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "note-bubble";
+    bubble.textContent = note.note;
+
+    bubbleWrap.appendChild(bubble);
+    row.appendChild(bubbleWrap);
+    notesThread.appendChild(row);
+  }
+
   function attachMarkerPopup(marker, data) {
     marker.addListener("click", () => {
       if (activeInfoWindow) activeInfoWindow.close();
@@ -1091,42 +1116,37 @@
       const notesContainer = document.createElement("div");
       notesContainer.className = "notes-container";
 
-      // thread area
       const notesThread = document.createElement("div");
       notesThread.className = "notes-thread";
 
-      // 🔥 MOCK DATA (replace later with backend)
-      const mockNotes = [
-        { user: "James", text: "Knocked, no answer", ts: Date.now() - 600000 },
-        { user: CURRENT_USER, text: "Will try again later", ts: Date.now() - 300000 },
-        { user: "Caleb", text: "Dog present, be careful", ts: Date.now() - 100000 }
-      ];
+      // 🔥 LOAD NOTES FROM BACKEND
+      (async () => {
+        try {
+          const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-notes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              parcel_ids: [marker.parcel_id]
+            })
+          });
 
-      // render messages
-      mockNotes.forEach(n => {
-        const row = document.createElement("div");
-        row.className = "note-row " + (n.user === CURRENT_USER ? "note-right" : "note-left");
+          const notes = await res.json();
 
-        const bubbleWrap = document.createElement("div");
+          if (!Array.isArray(notes)) return;
 
-        // meta (only for left side)
-        if (n.user !== CURRENT_USER) {
-          const meta = document.createElement("div");
-          meta.className = "note-meta";
-          meta.textContent = `${n.user} • ${new Date(n.ts).toLocaleTimeString()}`;
-          bubbleWrap.appendChild(meta);
+          notes.forEach(note => renderNote(notesThread, note));
+
+          // scroll to bottom
+          notesThread.scrollTop = notesThread.scrollHeight;
+
+        } catch (err) {
+          console.error("Failed to load notes:", err);
         }
+      })();
 
-        const bubble = document.createElement("div");
-        bubble.className = "note-bubble";
-        bubble.textContent = n.text;
-
-        bubbleWrap.appendChild(bubble);
-        row.appendChild(bubbleWrap);
-        notesThread.appendChild(row);
-      });
-
-      // input row
+      // 🔥 INPUT
       const inputRow = document.createElement("div");
       inputRow.className = "notes-input";
 
@@ -1136,36 +1156,55 @@
       const sendBtn = document.createElement("button");
       sendBtn.textContent = "Send";
 
-      // 🔥 frontend only send (no backend yet)
-      sendBtn.onclick = () => {
+      sendBtn.onclick = async () => {
         const text = input.value.trim();
         if (!text) return;
 
-        const row = document.createElement("div");
-        row.className = "note-row note-right";
-
-        const bubble = document.createElement("div");
-        bubble.className = "note-bubble";
-        bubble.textContent = text;
-
-        row.appendChild(bubble);
-        notesThread.appendChild(row);
-
         input.value = "";
+
+        // 🔥 optimistic UI (instant render)
+        const optimisticNote = {
+          parcel_id: marker.parcel_id,
+          user: CURRENT_USER,
+          note: text,
+          created_at: new Date().toISOString()
+        };
+
+        renderNote(notesThread, optimisticNote);
         notesThread.scrollTop = notesThread.scrollHeight;
+
+        try {
+          const res = await fetch("https://lightwalk.coryzuber.workers.dev/add-note", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              parcel_id: marker.parcel_id,
+              user: CURRENT_USER,
+              note: text
+            })
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            console.error("Add note failed:", data);
+          }
+
+        } catch (err) {
+          console.error("Add note error:", err);
+        }
       };
 
       inputRow.appendChild(input);
       inputRow.appendChild(sendBtn);
 
-      // assemble
       notesContainer.appendChild(notesThread);
       notesContainer.appendChild(inputRow);
 
-      // 🔥 ADD TO TOP OF POPUP
       container.appendChild(notesContainer);
-      container.style.minWidth = "220px";
-      container.style.fontSize = "14px";
+
       
       
       

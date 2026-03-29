@@ -18,6 +18,14 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    if (request.method === "POST" && url.pathname === "/add-note") {
+      return handleAddNote(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/get-notes") {
+      return handleGetNotes(request, env);
+    }
+
     // 🔥 USER LOCATION UPDATE
     if (request.method === "POST" && url.pathname === "/update-location") {
       return handleUpdateLocation(request, env);
@@ -72,6 +80,84 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+
+async function handleGetNotes(request, env) {
+  try {
+    const body = await request.json();
+    const { parcel_ids } = body;
+
+    if (!parcel_ids || !parcel_ids.length) {
+      return json({ error: "No parcel_ids provided" }, 400);
+    }
+
+    const placeholders = parcel_ids.map(() => "?").join(",");
+
+    const query = `
+      SELECT *
+      FROM parcel_notes
+      WHERE parcel_id IN (${placeholders})
+      ORDER BY created_at ASC
+    `;
+
+    const normalizedIds = parcel_ids.map(id => id.toString());
+
+    const rows = await env.DB
+      .prepare(query)
+      .bind(...normalizedIds)
+      .all();
+
+    return json(rows.results || []);
+
+  } catch (err) {
+    console.error("get-notes error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
+async function handleAddNote(request, env) {
+  try {
+    const body = await request.json();
+
+    const { parcel_id, user, note } = body;
+
+    if (!parcel_id || !user || !note) {
+      return json({ error: "Missing parcel_id, user, or note" }, 400);
+    }
+
+    const id = crypto.randomUUID();
+
+    await env.DB.prepare(`
+      INSERT INTO parcel_notes (id, parcel_id, user, note, created_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `)
+      .bind(
+        id,
+        parcel_id.toString(),
+        user,
+        note
+      )
+      .run();
+
+    // 🔥 return the inserted note (matches your pattern)
+    const inserted = await env.DB.prepare(`
+      SELECT *
+      FROM parcel_notes
+      WHERE id = ?
+      LIMIT 1
+    `)
+      .bind(id)
+      .first();
+
+    return json({
+      success: true,
+      note: inserted
+    });
+
+  } catch (err) {
+    console.error("add-note error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 
 async function handleUpdateLocation(request, env) {
   try {
