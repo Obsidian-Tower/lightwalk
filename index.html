@@ -386,6 +386,28 @@
         activeInfoWindow = null;
       }
     });
+     const urlUser = getUserFromURL();
+
+    if (urlUser) {
+      CURRENT_USER = urlUser;
+      console.log("👤 User from URL:", CURRENT_USER);
+
+      // 🔥 STEP 1: load ALL polygons first
+      fetchAllPolygons().then(() => {
+
+        // 🔥 STEP 2: then load active state
+        fetchActivePolygons().then(() => {
+
+          // 🔥 STEP 3: apply active state to UI
+          applyActiveStateToUI();
+
+        });
+
+      });
+
+    } else {
+      showUserSelectionModal();
+    }
   }
 
   async function savePolygonToBackend(path) {
@@ -1464,170 +1486,6 @@
   }
 
   </script>
-  <script>
-  (function () {
-    const consoleDiv = document.getElementById("dev-console");
-
-    function format(arg) {
-      if (arg instanceof Error) {
-        return arg.stack || arg.message;
-      }
-
-      if (typeof arg === "object") {
-        try {
-          return JSON.stringify(arg, null, 2);
-        } catch {
-          return "[Object]";
-        }
-      }
-
-      return String(arg);
-    }
-
-    function write(type, args) {
-      if (!consoleDiv) return;
-
-      const line = document.createElement("div");
-
-      const colors = {
-        log: "#00ffcc",
-        error: "#ff4d4d",
-        warn: "#ffaa00",
-        info: "#66aaff",
-        network: "#a78bfa"
-      };
-
-      line.style.color = colors[type] || "#fff";
-      line.style.marginBottom = "3px";
-      line.style.whiteSpace = "pre-wrap";
-
-      const time = new Date().toLocaleTimeString();
-
-      line.textContent =
-        `[${time}] [${type.toUpperCase()}] ` +
-        args.map(format).join(" ");
-
-      consoleDiv.appendChild(line);
-      consoleDiv.scrollTop = consoleDiv.scrollHeight;
-    }
-
-    // =========================
-    // 1. Console override
-    // =========================
-    ["log", "error", "warn", "info"].forEach(type => {
-      const original = console[type];
-      console[type] = function (...args) {
-        write(type, args);
-        original.apply(console, args);
-      };
-    });
-
-    // =========================
-    // 2. JS runtime errors
-    // =========================
-    window.addEventListener("error", (e) => {
-      write("error", [
-        "JS Error:",
-        e.message,
-        "at",
-        `${e.filename}:${e.lineno}:${e.colno}`
-      ]);
-    });
-
-    // =========================
-    // 3. Resource load errors (scripts, images)
-    // =========================
-    window.addEventListener("error", (e) => {
-      if (e.target && e.target !== window) {
-        write("error", [
-          "Resource failed:",
-          e.target.src || e.target.href || e.target.tagName
-        ]);
-      }
-    }, true);
-
-    // =========================
-    // 4. Unhandled promises
-    // =========================
-    window.addEventListener("unhandledrejection", (e) => {
-      write("error", ["Unhandled Promise:", e.reason]);
-    });
-
-    // =========================
-    // 5. FETCH interceptor
-    // =========================
-    const originalFetch = window.fetch;
-    window.fetch = async function (...args) {
-      const url = args[0];
-
-      try {
-        const res = await originalFetch.apply(this, args);
-
-        write("network", [
-          "FETCH",
-          url,
-          res.status
-        ]);
-
-        return res;
-
-      } catch (err) {
-        write("error", ["FETCH FAILED:", url, err]);
-        throw err;
-      }
-    };
-
-    // =========================
-    // 6. XHR interceptor (rare but important)
-    // =========================
-    const origOpen = XMLHttpRequest.prototype.open;
-    const origSend = XMLHttpRequest.prototype.send;
-
-    XMLHttpRequest.prototype.open = function (method, url) {
-      this._url = url;
-      this._method = method;
-      return origOpen.apply(this, arguments);
-    };
-
-    XMLHttpRequest.prototype.send = function () {
-      this.addEventListener("load", () => {
-        write("network", [
-          "XHR",
-          this._method,
-          this._url,
-          this.status
-        ]);
-      });
-
-      this.addEventListener("error", () => {
-        write("error", [
-          "XHR FAILED",
-          this._method,
-          this._url
-        ]);
-      });
-
-      return origSend.apply(this, arguments);
-    };
-
-  })();
-  </script>
-  <div id="dev-console" class="ui-group" style="
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    max-height: 35%;
-    overflow-y: auto;
-    background: rgba(0,0,0,0.95);
-    color: #00ffcc;
-    font-family: monospace;
-    font-size: 11px;
-    padding: 8px;
-    box-sizing: border-box;
-    z-index: 99999;
-    border-top: 1px solid #222;
-    display: none;
-  "></div>
+ 
   </body>
   </html>
