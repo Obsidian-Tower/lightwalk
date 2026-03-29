@@ -1089,12 +1089,12 @@
     const bubbleWrap = document.createElement("div");
 
     // meta for others
-    if (!isMe) {
-      const meta = document.createElement("div");
-      meta.className = "note-meta";
-      meta.textContent = `${note.user} • ${new Date(note.created_at).toLocaleTimeString()}`;
-      bubbleWrap.appendChild(meta);
-    }
+    
+    const meta = document.createElement("div");
+    meta.className = "note-meta";
+    meta.textContent = `${note.user} - ${new Date(note.created_at).toLocaleTimeString()}`;
+    bubbleWrap.appendChild(meta);
+    
 
     const bubble = document.createElement("div");
     bubble.className = "note-bubble";
