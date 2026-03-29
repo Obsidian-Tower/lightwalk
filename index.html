@@ -1468,7 +1468,11 @@
   (function () {
     const consoleDiv = document.getElementById("dev-console");
 
-    function formatArg(arg) {
+    function format(arg) {
+      if (arg instanceof Error) {
+        return arg.stack || arg.message;
+      }
+
       if (typeof arg === "object") {
         try {
           return JSON.stringify(arg, null, 2);
@@ -1476,6 +1480,7 @@
           return "[Object]";
         }
       }
+
       return String(arg);
     }
 
@@ -1486,20 +1491,29 @@
 
       const colors = {
         log: "#00ffcc",
-        error: "#ff5555",
+        error: "#ff4d4d",
         warn: "#ffaa00",
-        info: "#66aaff"
+        info: "#66aaff",
+        network: "#a78bfa"
       };
 
       line.style.color = colors[type] || "#fff";
-      line.style.marginBottom = "2px";
+      line.style.marginBottom = "3px";
+      line.style.whiteSpace = "pre-wrap";
 
-      line.textContent = `[${type.toUpperCase()}] ` + args.map(formatArg).join(" ");
+      const time = new Date().toLocaleTimeString();
+
+      line.textContent =
+        `[${time}] [${type.toUpperCase()}] ` +
+        args.map(format).join(" ");
 
       consoleDiv.appendChild(line);
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     }
 
+    // =========================
+    // 1. Console override
+    // =========================
     ["log", "error", "warn", "info"].forEach(type => {
       const original = console[type];
       console[type] = function (...args) {
@@ -1508,13 +1522,92 @@
       };
     });
 
-    // capture global errors
-    window.onerror = function (msg, src, line, col) {
-      console.error("Uncaught:", msg, "at", line + ":" + col);
+    // =========================
+    // 2. JS runtime errors
+    // =========================
+    window.addEventListener("error", (e) => {
+      write("error", [
+        "JS Error:",
+        e.message,
+        "at",
+        `${e.filename}:${e.lineno}:${e.colno}`
+      ]);
+    });
+
+    // =========================
+    // 3. Resource load errors (scripts, images)
+    // =========================
+    window.addEventListener("error", (e) => {
+      if (e.target && e.target !== window) {
+        write("error", [
+          "Resource failed:",
+          e.target.src || e.target.href || e.target.tagName
+        ]);
+      }
+    }, true);
+
+    // =========================
+    // 4. Unhandled promises
+    // =========================
+    window.addEventListener("unhandledrejection", (e) => {
+      write("error", ["Unhandled Promise:", e.reason]);
+    });
+
+    // =========================
+    // 5. FETCH interceptor
+    // =========================
+    const originalFetch = window.fetch;
+    window.fetch = async function (...args) {
+      const url = args[0];
+
+      try {
+        const res = await originalFetch.apply(this, args);
+
+        write("network", [
+          "FETCH",
+          url,
+          res.status
+        ]);
+
+        return res;
+
+      } catch (err) {
+        write("error", ["FETCH FAILED:", url, err]);
+        throw err;
+      }
     };
 
-    window.onunhandledrejection = function (e) {
-      console.error("Promise error:", e.reason);
+    // =========================
+    // 6. XHR interceptor (rare but important)
+    // =========================
+    const origOpen = XMLHttpRequest.prototype.open;
+    const origSend = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this._url = url;
+      this._method = method;
+      return origOpen.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.send = function () {
+      this.addEventListener("load", () => {
+        write("network", [
+          "XHR",
+          this._method,
+          this._url,
+          this.status
+        ]);
+      });
+
+      this.addEventListener("error", () => {
+        write("error", [
+          "XHR FAILED",
+          this._method,
+          this._url
+        ]);
+      });
+
+      return origSend.apply(this, arguments);
     };
 
   })();
