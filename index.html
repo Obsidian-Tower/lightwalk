@@ -1160,25 +1160,14 @@
         const text = input.value.trim();
         if (!text) return;
 
-        input.value = "";
-
-        // 🔥 optimistic UI (instant render)
-        const optimisticNote = {
-          parcel_id: marker.parcel_id,
-          user: CURRENT_USER,
-          note: text,
-          created_at: new Date().toISOString()
-        };
-
-        renderNote(notesThread, optimisticNote);
-        notesThread.scrollTop = notesThread.scrollHeight;
+        input.disabled = true;
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Sending...";
 
         try {
           const res = await fetch("https://lightwalk.coryzuber.workers.dev/add-note", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               parcel_id: marker.parcel_id,
               user: CURRENT_USER,
@@ -1188,15 +1177,22 @@
 
           const data = await res.json();
 
-          if (!res.ok) {
+          if (res.ok && data?.note) {
+            renderNote(notesThread, data.note);
+            input.value = "";
+            notesThread.scrollTop = notesThread.scrollHeight;
+          } else {
             console.error("Add note failed:", data);
           }
 
         } catch (err) {
           console.error("Add note error:", err);
+        } finally {
+          input.disabled = false;
+          sendBtn.disabled = false;
+          sendBtn.textContent = "Send";
         }
       };
-
       inputRow.appendChild(input);
       inputRow.appendChild(sendBtn);
 
