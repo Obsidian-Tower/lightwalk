@@ -156,7 +156,7 @@ function renderAreas(){
 
     const id = document.createElement("div");
     id.className = "area-id";
-    id.textContent = `ID ${i+1}`;
+    id.textContent = `ID ${p.id}`;
 
     const name = document.createElement("div");
     name.textContent = p.name;
@@ -252,9 +252,18 @@ function openEditModal(poly){
   modal.append(close, input, actions);
   overlay.appendChild(modal);
 
-  overlay.onclick = (e)=>{
-    if(e.target === overlay) container.innerHTML = "";
-  };
+  let mouseDownOnOverlay = false;
+
+  overlay.addEventListener("mousedown", (e) => {
+    mouseDownOnOverlay = (e.target === overlay);
+  });
+
+  overlay.addEventListener("mouseup", (e) => {
+    if (mouseDownOnOverlay && e.target === overlay) {
+      container.innerHTML = "";
+    }
+    mouseDownOnOverlay = false;
+  });
 
   container.appendChild(overlay);
 }
