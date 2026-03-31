@@ -633,6 +633,7 @@
     colorBox.style.background = polyObj.color;
 
     const label = document.createElement("span");
+    console.log("inside addlayerUI:",polyObj.name)
     label.textContent = polyObj.name || `area-${polyObj.id}`;
 
     checkbox.checked = ACTIVE_POLYGONS.has(polyObj.id);
@@ -1101,7 +1102,7 @@
           color,
           visible: true
         };
-
+        console.log("Name:", polyObj.name);
         polygons.push(polyObj);
 
         // 🔥 THIS populates the "Areas" list
