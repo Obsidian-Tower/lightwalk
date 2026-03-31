@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manage Areas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    html, body {
+      height:100%;
+      margin:0;
+      overflow:hidden;
+      font-family:sans-serif;
+      position:fixed;
+      width:100%;
+    }
+
+    #map {
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+    }
+
+    #drawOverlay {
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      z-index:5;
+      pointer-events:none;
+      cursor:crosshair;
+    }
+
+    .controls {
+      position:absolute;
+      top:10px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,0.85);
+      padding:10px;
+      border-radius:10px;
+      color:white;
+      display:flex;
+      gap:10px;
+      z-index:10;
+    }
+
+    button {
+      padding:8px 12px;
+      border:none;
+      border-radius:6px;
+      background:#2563eb;
+      color:white;
+      cursor:pointer;
+    }
+
+    .active-draw {
+      background:#16a34a !important;
+    }
+
+    .layer-panel {
+      position:absolute;
+      bottom:10px;
+      right:10px;
+      background:rgba(0,0,0,0.9);
+      color:white;
+      padding:12px;
+      border-radius:10px;
+      max-height:300px;
+      overflow:auto;
+      min-width:220px;
+      z-index:10;
+    }
+
+    .layer-item {
+      display:flex;
+      flex-direction:column;
+      margin-bottom:10px;
+      padding-bottom:8px;
+      border-bottom:1px solid #333;
+    }
+
+    .row {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-top:4px;
+    }
+
+    .color-box {
+      width:12px;
+      height:12px;
+      border-radius:3px;
+    }
+
+    input[type="text"] {
+      flex:1;
+      padding:4px;
+      border-radius:4px;
+      border:none;
+    }
+
+    .delete-btn {
+      background:#dc2626;
+    }
+
+    /* toggle */
+    #uiToggleWrapper {
+      position:absolute;
+      bottom:12px;
+      left:12px;
+      z-index:9999;
+    }
+
+    .switch {
+      width:52px;
+      height:28px;
+      position:relative;
+      display:inline-block;
+    }
+
+    .switch input { display:none; }
+
+    .slider {
+      position:absolute;
+      inset:0;
+      background:#444;
+      border-radius:30px;
+      cursor:pointer;
+    }
+
+    .slider:before {
+      content:"";
+      position:absolute;
+      height:22px;
+      width:22px;
+      left:3px;
+      top:3px;
+      background:white;
+      border-radius:50%;
+      transition:.3s;
+    }
+
+    input:checked + .slider {
+      background:#16a34a;
+    }
+
+    input:checked + .slider:before {
+      transform:translateX(24px);
+    }
+
+    .ui-group {
+      transition:opacity .25s;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div id="drawOverlay"></div>
+
+<div id="uiToggleWrapper">
+  <label class="switch">
+    <input type="checkbox" id="uiToggle">
+    <span class="slider"></span>
+  </label>
+</div>
+
+<div class="controls ui-group">
+  <button id="drawBtn" onclick="startDrawing()">Draw</button>
+  <button onclick="finishDrawing()">Finish</button>
+  <button onclick="clearAll()">Clear</button>
+</div>
+
+<div class="layer-panel ui-group">
+  <b>Areas</b>
+  <div id="layerList"></div>
+</div>
+
+<script>
+
+let map;
+let drawing = false;
+let currentPath = [];
+let currentPolyline = null;
+let polygons = [];
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 29.187, lng: -82.140 },
+    zoom: 16,
+    mapTypeId: "hybrid",
+    gestureHandling: "greedy"
+  });
+
+  fetchPolygons();
+}
+
+function startDrawing() {
+  drawing = true;
+  currentPath = [];
+
+  document.getElementById("drawBtn").classList.add("active-draw");
+
+  const overlay = document.getElementById("drawOverlay");
+  overlay.style.pointerEvents = "auto";
+
+  if (currentPolyline) currentPolyline.setMap(null);
+
+  currentPolyline = new google.maps.Polyline({
+    path: currentPath,
+    map: map,
+    strokeColor: "#ff0000",
+    strokeWeight: 3
+  });
+
+  overlay.onmousedown = e => {
+    if (!drawing) return;
+    addPoint(screenToLatLng(e.clientX, e.clientY));
+  };
+
+  overlay.onmousemove = e => {
+    if (!drawing || currentPath.length === 0) return;
+    currentPolyline.setPath([...currentPath, screenToLatLng(e.clientX, e.clientY)]);
+  };
+}
+
+async function finishDrawing() {
+  if (currentPath.length < 3) return;
+
+  drawing = false;
+  document.getElementById("drawBtn").classList.remove("active-draw");
+  document.getElementById("drawOverlay").style.pointerEvents = "none";
+
+  const color = getRandomColor();
+
+  const polygon = new google.maps.Polygon({
+    paths: currentPath,
+    strokeColor: color,
+    fillColor: color,
+    fillOpacity: 0.2,
+    map: map
+  });
+
+  const res = await fetch("/save-polygon", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ coords: currentPath.map(p=>[p.lat(),p.lng()]) })
+  });
+
+  const data = await res.json();
+
+  const polyObj = {
+    id: data.id,
+    name: data.name || `area-${data.id}`,
+    polygon,
+    color
+  };
+
+  polygons.push(polyObj);
+  addLayerUI(polyObj);
+}
+
+function addLayerUI(polyObj) {
+  const list = document.getElementById("layerList");
+
+  const item = document.createElement("div");
+  item.className = "layer-item";
+
+  const row1 = document.createElement("div");
+  row1.className = "row";
+
+  const colorBox = document.createElement("div");
+  colorBox.className = "color-box";
+  colorBox.style.background = polyObj.color;
+
+  const nameInput = document.createElement("input");
+  nameInput.value = polyObj.name;
+
+  nameInput.onchange = () => {
+    fetch("/update-polygon-name", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        id: polyObj.id,
+        name: nameInput.value
+      })
+    });
+  };
+
+  row1.appendChild(colorBox);
+  row1.appendChild(nameInput);
+
+  const row2 = document.createElement("div");
+  row2.className = "row";
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "delete-btn";
+  deleteBtn.textContent = "Delete";
+
+  deleteBtn.onclick = async () => {
+    await fetch("/delete-polygon", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ id: polyObj.id })
+    });
+
+    polyObj.polygon.setMap(null);
+    item.remove();
+  };
+
+  row2.appendChild(deleteBtn);
+
+  item.appendChild(row1);
+  item.appendChild(row2);
+  list.appendChild(item);
+}
+
+async function fetchPolygons() {
+  const res = await fetch("/get-polygons");
+  const data = await res.json();
+
+  data.forEach(row => {
+    const color = getRandomColor();
+
+    const path = row.coords.map(([lat,lng]) =>
+      new google.maps.LatLng(lat,lng)
+    );
+
+    const polygon = new google.maps.Polygon({
+      paths:path,
+      strokeColor:color,
+      fillColor:color,
+      fillOpacity:0.2,
+      map:map
+    });
+
+    const polyObj = {
+      id:row.id,
+      name:row.name || `area-${row.id}`,
+      polygon,
+      color
+    };
+
+    polygons.push(polyObj);
+    addLayerUI(polyObj);
+  });
+}
+
+function clearAll() {
+  polygons.forEach(p => p.polygon.setMap(null));
+  polygons = [];
+  document.getElementById("layerList").innerHTML = "";
+}
+
+function getRandomColor() {
+  const colors = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#a855f7","#14b8a6"];
+  return colors[Math.floor(Math.random()*colors.length)];
+}
+
+function screenToLatLng(x,y){
+  const projection = map.getProjection();
+  const bounds = map.getBounds();
+  const topRight = projection.fromLatLngToPoint(bounds.getNorthEast());
+  const bottomLeft = projection.fromLatLngToPoint(bounds.getSouthWest());
+  const scale = Math.pow(2,map.getZoom());
+
+  const worldPoint = new google.maps.Point(
+    x/scale + bottomLeft.x,
+    y/scale + topRight.y
+  );
+
+  return projection.fromPointToLatLng(worldPoint);
+}
+
+function addPoint(latLng){
+  currentPath.push(latLng);
+  currentPolyline.setPath(currentPath);
+}
+
+const toggle = document.getElementById("uiToggle");
+
+function applyUIToggle(visible){
+  document.querySelectorAll(".ui-group").forEach(el=>{
+    el.style.opacity = visible ? "1":"0";
+    el.style.pointerEvents = visible ? "auto":"none";
+  });
+}
+
+applyUIToggle(false);
+
+toggle.addEventListener("change", e=>{
+  applyUIToggle(e.target.checked);
+});
+
+</script>
+
+<script async
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGFCA70J_CRFo-FxwoSpN3ZjpMicNeVfM&callback=initMap">
+</script>
+
+</body>
+</html>

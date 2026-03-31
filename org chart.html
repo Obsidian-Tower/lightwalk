@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fiber Sales Org Chart</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 40px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    color: #1e293b;
+}
+
+/* TITLE */
+h1 {
+    text-align: center;
+    margin-bottom: 50px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+/* ORG WRAPPER */
+.org {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* LEVEL ROW */
+.level {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    position: relative;
+}
+
+/* CARD */
+.card {
+    background: white;
+    padding: 14px 18px;
+    border-radius: 14px;
+    min-width: 180px;
+    text-align: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+}
+
+/* TEXT */
+.name {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.role {
+    font-size: 13px;
+    color: #3b82f6;
+}
+
+/* CONNECTORS */
+.connector {
+    width: 2px;
+    height: 30px;
+    background: #cbd5e1;
+}
+
+.horizontal {
+    height: 2px;
+    background: #cbd5e1;
+    position: absolute;
+    top: -15px;
+    left: 0;
+    right: 0;
+}
+
+/* TEAM BLOCK */
+.team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* SUB LEVEL */
+.sub {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+/* LEAD COLOR ACCENT */
+.lead .card {
+    border: 2px solid #3b82f6;
+}
+
+/* OWNER STYLE */
+.owner .card {
+    border: 2px solid #111827;
+}
+
+/* SUBTLE LABEL */
+.section-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Fiber Sales Org Structure</h1>
+
+<div class="org">
+
+    <!-- OWNERS -->
+    <div class="section-label">Ownership</div>
+    <div class="level owner">
+        <div class="card">
+            <div class="name">Cory</div>
+            <div class="role">CTO</div>
+            <div class="role">Infrastructure · Software · Analysis</div>
+        </div>
+
+        <div class="card">
+            <div class="name">Edward</div>
+            <div class="role">Director of Operations</div>
+        </div>
+    </div>
+
+    <div class="connector"></div>
+
+    <!-- TEAM LEADS -->
+    <div class="section-label">Sales Teams</div>
+
+    <div class="level">
+
+        <!-- TEAM A -->
+        <div class="team lead">
+            <div class="card">
+                <div class="name">Team Lead A</div>
+                <div class="role">Sales Manager</div>
+            </div>
+
+            <div class="connector"></div>
+
+            <div class="sub">
+                <div class="card">
+                    <div class="name">Rep A1</div>
+                    <div class="role">Rookie</div>
+                </div>
+                <div class="card">
+                    <div class="name">Rep A2</div>
+                    <div class="role">Rookie</div>
+                </div>
+                <div class="card">
+                    <div class="name">Rep A3</div>
+                    <div class="role">Rookie</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEAM B -->
+        <div class="team lead">
+            <div class="card">
+                <div class="name">Team Lead B</div>
+                <div class="role">Sales Manager</div>
+            </div>
+
+            <div class="connector"></div>
+
+            <div class="sub">
+                <div class="card">
+                    <div class="name">Rep B1</div>
+                    <div class="role">Rookie</div>
+                </div>
+                <div class="card">
+                    <div class="name">Rep B2</div>
+                    <div class="role">Rookie</div>
+                </div>
+                <div class="card">
+                    <div class="name">Rep B3</div>
+                    <div class="role">Rookie</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEAM C -->
+        <div class="team lead">
+            <div class="card">
+                <div class="name">Team Lead C</div>
+                <div class="role">Sales Manager</div>
+            </div>
+
+            <div class="connector"></div>
+
+            <div class="sub">
+                <div class="card">
+                    <div class="name">Rep C1</div>
+                    <div class="role">Rookie</div>
+                </div>
+                <div class="card">
+                    <div class="name">Rep C2</div>
+                    <div class="role">Rookie</div>
+                </div>
+                <div class="card">
+                    <div class="name">Rep C3</div>
+                    <div class="role">Rookie</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
