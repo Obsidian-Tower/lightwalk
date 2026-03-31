@@ -1462,28 +1462,7 @@
     }
   }
 
-  const urlUser = getUserFromURL();
-
-  if (urlUser) {
-    CURRENT_USER = urlUser;
-    console.log("👤 User from URL:", CURRENT_USER);
-
-    // 🔥 STEP 1: load ALL polygons first
-    fetchAllPolygons().then(() => {
-
-      // 🔥 STEP 2: then load active state
-      fetchActivePolygons().then(() => {
-
-        // 🔥 STEP 3: apply active state to UI
-        applyActiveStateToUI();
-
-      });
-
-    });
-
-  } else {
-    showUserSelectionModal();
-  }
+  
 
   </script>
  
