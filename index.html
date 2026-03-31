@@ -583,9 +583,10 @@
 
     // 🔥 STEP 2: USE DB ID AS AREA NAME
     const polyObj = {
-      id: result.id, // <-- comes from DB
+      id: row.id,
+      name: row.name, // 🔥 ADD THIS
       polygon,
-      path: [...currentPath],
+      path,
       markers: [],
       clusterer: null,
       color,
@@ -633,7 +634,7 @@
     colorBox.style.background = polyObj.color;
 
     const label = document.createElement("span");
-    label.textContent = `area-${polyObj.id}`;
+    label.textContent = polyObj.name || `area-${polyObj.id}`;
 
     checkbox.checked = ACTIVE_POLYGONS.has(polyObj.id);
 
