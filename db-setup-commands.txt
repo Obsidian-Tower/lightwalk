@@ -9,3 +9,5 @@ wrangler d1 execute lightwalk-db --remote --command="CREATE UNIQUE INDEX idx_uni
 wrangler d1 execute lightwalk-db --remote --command "CREATE TABLE polygons (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT NOT NULL, coords TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);"
 
 wrangler d1 execute lightwalk-db --remote --command "CREATE TABLE user_active_polygons (user TEXT PRIMARY KEY, active_polygons TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);"
+
+wrangler d1 execute lightwalk-db --remote --command "ALTER TABLE polygons ADD COLUMN name TEXT;"

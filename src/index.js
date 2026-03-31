@@ -18,6 +18,10 @@ export default {
       return serveStatic("index.html", env);
     }
 
+    if (request.method === "POST" && url.pathname === "/update-area") {
+      return handleUpdateArea(request, env);
+    }
+
     if (request.method === "POST" && url.pathname === "/add-note") {
       return handleAddNote(request, env);
     }
@@ -80,6 +84,52 @@ export default {
 // ================================
 // 🔥 HANDLERS
 // ================================
+
+async function handleUpdateArea(request, env) {
+  try {
+    const body = await request.json();
+    const { id, action, name } = body;
+
+    if (!id || !action) {
+      return json({ error: "Missing id or action" }, 400);
+    }
+
+    // 🔥 UPDATE NAME
+    if (action === "update_name") {
+      if (!name || !name.trim()) {
+        return json({ error: "Name required" }, 400);
+      }
+
+      await env.DB.prepare(`
+        UPDATE polygons
+        SET name = ?
+        WHERE id = ?
+      `)
+        .bind(name.trim(), id)
+        .run();
+
+      return json({ success: true });
+    }
+
+    // 🔥 DELETE AREA
+    if (action === "delete") {
+      await env.DB.prepare(`
+        DELETE FROM polygons
+        WHERE id = ?
+      `)
+        .bind(id)
+        .run();
+
+      return json({ success: true });
+    }
+
+    return json({ error: "Invalid action" }, 400);
+
+  } catch (err) {
+    console.error("update-area error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 
 async function handleGetNotes(request, env) {
   try {
@@ -224,14 +274,17 @@ async function handleGetLocations(env) {
 async function handleGetPolygons(request, env) {
   try {
     const rows = await env.DB.prepare(`
-      SELECT id, user, coords, created_at
+      SELECT id, user, name, coords, created_at
       FROM polygons
       ORDER BY id ASC
     `).all();
 
     const results = rows.results.map(row => ({
-      ...row,
-      coords: JSON.parse(row.coords)
+      id: row.id,
+      user: row.user,
+      name: row.name || `area-${row.id}`, // fallback safety
+      coords: JSON.parse(row.coords),
+      created_at: row.created_at
     }));
 
     return json(results);
@@ -241,6 +294,7 @@ async function handleGetPolygons(request, env) {
     return json({ error: err.message }, 500);
   }
 }
+
 async function handleSavePolygon(request, env) {
   try {
     const body = await request.json();
