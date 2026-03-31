@@ -584,7 +584,6 @@
     // 🔥 STEP 2: USE DB ID AS AREA NAME
     const polyObj = {
       id: row.id,
-      name: row.name, // 🔥 ADD THIS
       polygon,
       path,
       markers: [],
@@ -1094,6 +1093,7 @@
 
         const polyObj = {
           id: row.id,
+          name: row.name, // 🔥 THIS is the missing link
           polygon,
           path,
           markers: [],
