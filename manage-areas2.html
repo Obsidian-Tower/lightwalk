@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manage Areas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    html, body { height:100%; margin:0; overflow:hidden; font-family:sans-serif; position:fixed; width:100%; }
+
+    #map { position:absolute; inset:0; }
+
+    .layer-panel {
+      position:absolute;
+      bottom:10px;
+      right:10px;
+      background:rgba(0,0,0,0.9);
+      color:white;
+      padding:12px;
+      border-radius:10px;
+      max-height:300px;
+      overflow:auto;
+      min-width:260px;
+      z-index:10;
+    }
+
+    .area-row {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 0;
+      border-bottom:1px solid #333;
+    }
+
+    .area-id { width:50px; opacity:.7; }
+
+    .edit-btn { background:#2563eb; border:none; color:white; padding:4px 8px; border-radius:6px; cursor:pointer; }
+
+    /* modal */
+    .modal-overlay {
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:999;
+    }
+
+    .modal {
+      background:#111;
+      padding:20px;
+      border-radius:10px;
+      width:300px;
+      position:relative;
+    }
+
+    .modal input {
+      width:100%;
+      padding:6px;
+      margin-top:10px;
+      border-radius:6px;
+      border:none;
+    }
+
+    .modal-actions {
+      display:flex;
+      justify-content:space-between;
+      margin-top:15px;
+    }
+
+    .save-btn { background:#2563eb; }
+    .save-btn.disabled { opacity:.4; pointer-events:none; }
+    .delete-btn { background:#dc2626; }
+
+    .close-x {
+      position:absolute;
+      top:6px;
+      right:10px;
+      cursor:pointer;
+      font-weight:bold;
+    }
+
+    .confirm-box {
+      margin-top:15px;
+      padding:10px;
+      background:#222;
+      border-radius:8px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="layer-panel">
+  <b>Areas</b>
+  <div id="layerList"></div>
+</div>
+
+<div id="modalContainer"></div>
+
+<script>
+let map;
+let polygons = [];
+
+function initMap(){
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat:29.187, lng:-82.140 },
+    zoom:16,
+    mapTypeId:"hybrid",
+    gestureHandling:"greedy"
+  });
+
+  fetchPolygons();
+}
+
+async function fetchPolygons(){
+  const res = await fetch("/get-polygons");
+  const data = await res.json();
+
+  polygons = [];
+
+  data.forEach(row=>{
+    const path = row.coords.map(([lat,lng])=> new google.maps.LatLng(lat,lng));
+
+    const polygon = new google.maps.Polygon({
+      paths:path,
+      strokeColor:"#3b82f6",
+      fillColor:"#3b82f6",
+      fillOpacity:0.2,
+      map:map
+    });
+
+    polygons.push({
+      id:row.id,
+      name:row.name || `area-${row.id}`,
+      polygon
+    });
+  });
+
+  renderAreas();
+}
+
+function renderAreas(){
+  const list = document.getElementById("layerList");
+  list.innerHTML = "";
+
+  polygons.forEach((p,i)=>{
+    const row = document.createElement("div");
+    row.className = "area-row";
+
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.checked = true;
+    toggle.onchange = ()=> p.polygon.setMap(toggle.checked ? map : null);
+
+    const id = document.createElement("div");
+    id.className = "area-id";
+    id.textContent = `ID ${i+1}`;
+
+    const name = document.createElement("div");
+    name.textContent = p.name;
+    name.style.flex = 1;
+
+    const edit = document.createElement("button");
+    edit.className = "edit-btn";
+    edit.textContent = "Edit";
+    edit.onclick = ()=> openEditModal(p);
+
+    row.append(toggle, id, name, edit);
+    list.appendChild(row);
+  });
+}
+
+function openEditModal(poly){
+  const container = document.getElementById("modalContainer");
+  container.innerHTML = "";
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  const close = document.createElement("div");
+  close.className = "close-x";
+  close.textContent = "X";
+  close.onclick = ()=> container.innerHTML = "";
+
+  const input = document.createElement("input");
+  input.value = poly.name;
+
+  const save = document.createElement("button");
+  save.className = "save-btn disabled";
+  save.textContent = "Save";
+
+  input.oninput = ()=>{
+    if(input.value !== poly.name) save.classList.remove("disabled");
+    else save.classList.add("disabled");
+  };
+
+  save.onclick = async ()=>{
+    const res = await updateArea(poly.id, "update_name", { name: input.value });
+    const data = await res.json();
+    if(data.success){
+      poly.name = input.value;
+      container.innerHTML = "";
+      renderAreas();
+    }
+  };
+
+  const del = document.createElement("button");
+  del.className = "delete-btn";
+  del.textContent = "Delete";
+
+  const confirmBox = document.createElement("div");
+
+  del.onclick = ()=>{
+    confirmBox.innerHTML = "";
+    confirmBox.className = "confirm-box";
+
+    const txt = document.createElement("div");
+    txt.textContent = "Confirm delete?";
+
+    const yes = document.createElement("button");
+    yes.textContent = "Confirm";
+
+    const no = document.createElement("button");
+    no.textContent = "Cancel";
+
+    yes.onclick = async ()=>{
+      const res = await updateArea(poly.id, "delete", {});
+      const data = await res.json();
+      if(data.success){
+        poly.polygon.setMap(null);
+        polygons = polygons.filter(p=>p.id!==poly.id);
+        container.innerHTML = "";
+        renderAreas();
+      }
+    };
+
+    no.onclick = ()=> confirmBox.innerHTML = "";
+
+    confirmBox.append(txt, yes, no);
+    modal.appendChild(confirmBox);
+  };
+
+  const actions = document.createElement("div");
+  actions.className = "modal-actions";
+  actions.append(save, del);
+
+  modal.append(close, input, actions);
+  overlay.appendChild(modal);
+
+  overlay.onclick = (e)=>{
+    if(e.target === overlay) container.innerHTML = "";
+  };
+
+  container.appendChild(overlay);
+}
+
+async function updateArea(id, action, payload){
+  return fetch("/update-area", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ id, action, ...payload })
+  });
+}
+
+</script>
+
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGFCA70J_CRFo-FxwoSpN3ZjpMicNeVfM&callback=initMap"></script>
+
+</body>
+</html>
