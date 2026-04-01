@@ -263,8 +263,26 @@
   </div>
 
   <div class="layer-panel ui-group">
+
+    <!-- 🔥 GIS SELECTOR -->
+    <div style="margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:8px;">
+      <b style="display:block; margin-bottom:6px;">GIS Source</b>
+
+      <label style="display:flex; align-items:center; gap:6px; margin-bottom:4px; cursor:pointer;">
+        <input type="radio" name="gisSource" value="ocala" checked>
+        Ocala
+      </label>
+
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+        <input type="radio" name="gisSource" value="palmbay">
+        Palm Bay
+      </label>
+    </div>
+
+    <!-- 🔥 EXISTING -->
     <b>Areas</b>
     <div id="layerList"></div>
+
   </div>
 
   <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
@@ -279,6 +297,7 @@
     "installed":"#07ed0f",
     "vacant":"#fc7447"
   };  
+  let CURRENT_GIS = "ocala";
   let CURRENT_USER = null;
   let map;
   let drawing = false;
@@ -692,8 +711,13 @@
       spatialReference: { wkid: 4326 }
     };
 
-    const url = "https://gis.ocalafl.org/arcgis/rest/services/Public/Parcels/MapServer/0/query";
+    let url;
 
+    if (CURRENT_GIS === "ocala") {
+      url = "https://gis.ocalafl.org/arcgis/rest/services/Public/Parcels/MapServer/0/query";
+    } else if (CURRENT_GIS === "palmbay") {
+      url = "https://gis.palmbayflorida.org/arcgis/rest/services/Public/Parcels/MapServer/0/query";
+    }
     const params = new URLSearchParams({
       f: "json",
       geometry: JSON.stringify(geometry),
@@ -1464,7 +1488,12 @@
     }
   }
 
-  
+  document.querySelectorAll("input[name='gisSource']").forEach(radio => {
+    radio.addEventListener("change", (e) => {
+      CURRENT_GIS = e.target.value;
+      console.log("🌍 GIS switched to:", CURRENT_GIS);
+    });
+  });
 
   </script>
  
