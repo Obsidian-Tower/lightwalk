@@ -1,0 +1,1472 @@
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Ocala Parcel Mapper (Full + Fixed Drawing)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        font-family: sans-serif;
+      }
+
+      #map {
+        position:absolute;
+        top:0;
+        left:0;
+        height:100%;
+        width:100%;
+      }
+
+      #drawOverlay {
+        position:absolute;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        z-index:5;
+        pointer-events:none;
+        cursor:crosshair;
+      }
+
+      .controls {
+        position:absolute;
+        top:10px;
+        left:50%;
+        transform:translateX(-50%);
+        z-index:10;
+        background:rgba(0,0,0,0.85);
+        padding:12px;
+        border-radius:10px;
+        color:white;
+        display:flex;
+        gap:10px;
+      }
+
+      button {
+        padding:10px 16px;
+        background:#2563eb;
+        color:white;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+      }
+
+      .active-draw {
+        background:#16a34a !important;
+      }
+
+      .layer-panel {
+        position:absolute;
+        bottom:10px;
+        right:10px;
+        z-index:10;
+        background:rgba(0,0,0,0.9);
+        color:white;
+        padding:12px;
+        border-radius:10px;
+        max-height:300px;
+        overflow:auto;
+        min-width:180px;
+      }
+
+      .layer-item {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-bottom:6px;
+      }
+
+      .color-box {
+        width:12px;
+        height:12px;
+        border-radius:3px;
+      }
+
+      /* 🔥 Toggle bottom-left + smaller */
+      #uiToggleWrapper {
+        position:absolute;
+        bottom:12px;
+        left:12px;
+        z-index:9999;
+        transform: scale(1);
+        transform-origin: bottom left;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 28px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: #444;
+        border-radius: 34px;
+        transition: 0.3s;
+      }
+
+      .slider:before {
+        content: "";
+        position: absolute;
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        top: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.3s;
+      }
+
+      input:checked + .slider {
+        background-color: #16a34a;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(24px);
+      }
+
+      .ui-group {
+        transition: opacity 0.25s ease;
+      }
+
+      /* 🔥 NOTES CHAT */
+
+      .notes-container {
+        display: flex;
+        flex-direction: column;
+        height: 110px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: #ffffff; /* 🔥 light */
+        overflow: hidden;
+      }
+
+      .notes-thread {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        background: #f9fafb;
+      }
+
+      .note-row {
+        display: flex;
+        justify-content: flex-start; /* 🔥 always left */
+        width: 100%;
+      }
+
+      .note-bubble {
+        max-width: 70%;
+        padding: 6px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.3;
+      }
+
+      .note-left {
+        justify-content: flex-start;
+      }
+
+      .note-left .note-bubble {
+        background: #e5e7eb; /* light grey */
+        color: #111827; /* dark text */
+      }
+
+      .note-meta {
+        font-size: 10px;
+        opacity: 0.6;
+        color: #374151;
+      }
+
+      .notes-input {
+        display: flex;
+        align-items: center;
+        width: 100%;          /* 🔥 important */
+        gap: 6px;             /* optional spacing */
+        background: #ffffff;
+      }
+
+      .notes-input input {
+        flex: 1;
+        min-width: 0;         /* 🔥 CRITICAL (fixes flex overflow bugs) */
+        padding: 6px;
+        border: none;
+        outline: none;
+        font-size: 12px;
+        background: #ffffff;
+        color: #111827;
+      }
+
+      .notes-input button {
+        padding: 6px 10px;
+        border: none;
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+      }
+
+      .gm-ui-hover-effect {
+        display: none !important;
+      }
+      .gm-style .gm-style-iw-c {
+        padding: 0 !important;
+        border-radius: 8px !important;
+      }
+
+      .gm-style .gm-style-iw-d {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+      }
+      .gm-style .gm-style-iw {
+        padding: 0 !important;
+      }
+
+    </style>
+  </head>
+
+  <body>
+
+  <div id="map"></div>
+  <div id="drawOverlay"></div>
+
+  <!-- 🔥 Toggle -->
+  <div id="uiToggleWrapper">
+    <label class="switch">
+      <input type="checkbox" id="uiToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="controls ui-group">
+    <button id="drawBtn" onclick="startDrawing()">Tap to Draw</button>
+    <button onclick="finishDrawing()">Finish Polygon</button>
+    <button onclick="clearAll()">Clear All</button>
+    <button onclick="toggleClustering()" id="clusterBtn">Clustering: ON</button>
+  </div>
+
+  <div class="layer-panel ui-group">
+    <b>Areas</b>
+    <div id="layerList"></div>
+  </div>
+
+  <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+
+  <script>
+  const STATUS_COLORS = {
+    "prospect": "#facc15",        // yellow
+    "knocked": "#a855f7",         // purple
+    "not interested": "#06b7d6",  // cyan
+    "follow up": "#0419ba",       // dark blue
+    "sold": "#08a112",             // dark green
+    "installed":"#07ed0f",
+    "vacant":"#fc7447"
+  };  
+  let CURRENT_USER = null;
+  let map;
+  let drawing = false;
+  let currentPath = [];
+  let currentPolyline = null;
+  let ACTIVE_POLYGONS = new Set();
+  let polygons = [];
+  let clusteringEnabled = true;
+  let activeInfoWindow = null;
+
+  function getUserFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("user");
+  }
+
+  async function fetchActivePolygons() {
+    try {
+      const res = await fetch(`https://lightwalk.coryzuber.workers.dev/get-active-polygons?user=${CURRENT_USER}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Failed to fetch active polygons:", data);
+        return;
+      }
+
+      // 🔥 expect: [1,2,3]
+      ACTIVE_POLYGONS = new Set(data.active_polygons || []);
+
+      console.log("✅ Active polygons:", ACTIVE_POLYGONS);
+
+    } catch (err) {
+      console.error("❌ fetchActivePolygons error:", err);
+    }
+  }
+
+  function applyActiveStateToUI() {
+    polygons.forEach(polyObj => {
+      const isActive = ACTIVE_POLYGONS.has(polyObj.id);
+      if (isActive && polyObj.markers.length === 0) {
+        fetchParcelsForPolygon(polyObj);
+      }
+      // 🔥 set visibility
+      polyObj.visible = isActive;
+      polyObj.polygon.setMap(isActive ? map : null);
+
+      if (clusteringEnabled) {
+        polyObj.clusterer?.setMap(isActive ? map : null);
+      } else {
+        polyObj.markers.forEach(m => m.setMap(isActive ? map : null));
+      }
+
+      // 🔥 update checkbox UI
+      const checkboxes = document.querySelectorAll("#layerList input[type='checkbox']");
+
+      checkboxes.forEach(cb => {
+        const id = Number(cb.dataset.id);
+        cb.checked = ACTIVE_POLYGONS.has(id);
+      });
+    });
+  }
+
+  async function updateActivePolygons() {
+    try {
+      const list = Array.from(ACTIVE_POLYGONS);
+
+      await fetch("https://lightwalk.coryzuber.workers.dev/update-active-polygons", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user: CURRENT_USER,
+          active_polygons: list
+        })
+      });
+
+      console.log("✅ Active polygons updated:", list);
+
+    } catch (err) {
+      console.error("❌ updateActivePolygons error:", err);
+    }
+  }
+
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 29.187, lng: -82.140 },
+      zoom: 16,
+      gestureHandling: "greedy",
+
+      // 🔥 THIS is the key
+      mapTypeId: "hybrid",
+
+      styles: [
+        { featureType: "poi", stylers: [{ visibility: "off" }] },
+        { featureType: "transit", stylers: [{ visibility: "off" }] }
+      ]
+    });
+
+    // 🔥 ADD THIS LINE
+    getUserLocation();
+
+    map.addListener("click", () => {
+      if (activeInfoWindow) {
+        activeInfoWindow.close();
+        activeInfoWindow = null;
+      }
+    });
+     const urlUser = getUserFromURL();
+
+    if (urlUser) {
+      CURRENT_USER = urlUser;
+      console.log("👤 User from URL:", CURRENT_USER);
+
+      // 🔥 STEP 1: load ALL polygons first
+      fetchAllPolygons().then(() => {
+
+        // 🔥 STEP 2: then load active state
+        fetchActivePolygons().then(() => {
+
+          // 🔥 STEP 3: apply active state to UI
+          applyActiveStateToUI();
+
+        });
+
+      });
+
+    } else {
+      showUserSelectionModal();
+    }
+  }
+
+  async function savePolygonToBackend(path) {
+    try {
+      const coords = path.map(p => [p.lat(), p.lng()]);
+
+      const res = await fetch("https://lightwalk.coryzuber.workers.dev/save-polygon", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user: CURRENT_USER,
+          coords
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("❌ Save failed:", data);
+        return null;
+      }
+
+      console.log("✅ Polygon saved:", data);
+      return data;
+
+    } catch (err) {
+      console.error("❌ Network error:", err);
+      return null;
+    }
+  }
+
+  function showUserSelectionModal() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.background = "rgba(0,0,0,0.85)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "99999";
+
+    const box = document.createElement("div");
+    box.style.background = "#111";
+    box.style.padding = "30px";
+    box.style.borderRadius = "12px";
+    box.style.textAlign = "center";
+    box.style.color = "white";
+    box.style.minWidth = "250px";
+
+    const title = document.createElement("div");
+    title.textContent = "Select User";
+    title.style.marginBottom = "20px";
+    title.style.fontSize = "18px";
+    title.style.fontWeight = "600";
+
+    box.appendChild(title);
+
+    const users = ["Cory", "James", "Caleb", "Edward"];
+
+    users.forEach(user => {
+      const btn = document.createElement("button");
+
+      btn.textContent = user;
+      btn.style.display = "block";
+      btn.style.width = "100%";
+      btn.style.marginBottom = "10px";
+      btn.style.padding = "10px";
+      btn.style.borderRadius = "8px";
+      btn.style.border = "none";
+      btn.style.cursor = "pointer";
+      btn.style.background = "#2563eb";
+      btn.style.color = "white";
+
+      btn.onclick = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("user", user);
+
+        // 🔥 redirect to same page with user param
+        window.location.href = url.toString();
+      };
+
+      box.appendChild(btn);
+    });
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  }
+
+  function screenToLatLng(x, y) {
+    const projection = map.getProjection();
+    const bounds = map.getBounds();
+    const topRight = projection.fromLatLngToPoint(bounds.getNorthEast());
+    const bottomLeft = projection.fromLatLngToPoint(bounds.getSouthWest());
+    const scale = Math.pow(2, map.getZoom());
+
+    const worldPoint = new google.maps.Point(
+      x / scale + bottomLeft.x,
+      y / scale + topRight.y
+    );
+
+    return projection.fromPointToLatLng(worldPoint);
+  }
+
+  function startDrawing() {
+    drawing = true;
+    currentPath = [];
+
+    document.getElementById("drawBtn").classList.add("active-draw");
+
+    const overlay = document.getElementById("drawOverlay");
+    overlay.style.pointerEvents = "auto";
+
+    if (currentPolyline) currentPolyline.setMap(null);
+
+    currentPolyline = new google.maps.Polyline({
+      path: currentPath,
+      map: map,
+      strokeColor: "#ff0000",
+      strokeWeight: 4
+    });
+
+    overlay.onmousedown = (e) => {
+      // 🔥 always close popup on empty click
+      if (activeInfoWindow) {
+        activeInfoWindow.close();
+        activeInfoWindow = null;
+      }
+
+      if (!drawing) return;
+
+      addPoint(screenToLatLng(e.clientX, e.clientY));
+    };
+
+    overlay.onmousemove = (e) => {
+      if (!drawing || currentPath.length === 0) return;
+      currentPolyline.setPath([...currentPath, screenToLatLng(e.clientX, e.clientY)]);
+    };
+  }
+
+  async function finishDrawing() {
+    if (!drawing || currentPath.length < 3) return;
+
+    drawing = false;
+
+    document.getElementById("drawBtn").classList.remove("active-draw");
+    document.getElementById("drawOverlay").style.pointerEvents = "none";
+
+    const color = getRandomColor();
+
+    const polygon = new google.maps.Polygon({
+      paths: currentPath,
+      strokeColor: color,
+      fillColor: color,
+      fillOpacity: 0.2,
+      strokeWeight: 2,
+      map: map,
+      clickable: false
+    });
+
+
+    // 🔥 STEP 1: SAVE TO BACKEND
+    const result = await savePolygonToBackend(currentPath);
+
+    if (!result) {
+      console.warn("Polygon not saved, aborting");
+      return;
+    }
+
+    // 🔥 STEP 2: USE DB ID AS AREA NAME
+    const polyObj = {
+      id: row.id,
+      polygon,
+      path,
+      markers: [],
+      clusterer: null,
+      color,
+      visible: true
+    };
+
+    polygons.push(polyObj);
+
+    if (currentPolyline) currentPolyline.setMap(null);
+
+    // 🔥 STEP 3: NOW UI + GIS
+    addLayerUI(polyObj);
+    fetchParcelsForPolygon(polyObj);
+  }
+
+  function addPoint(latLng) {
+    currentPath.push(latLng);
+    currentPolyline.setPath(currentPath);
+    // 🔴 draw vertex dot
+    new google.maps.Marker({
+      position: latLng,
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 4, // match strokeWeight (4)
+        fillColor: "#ff0000",
+        fillOpacity: 1,
+        strokeWeight: 0
+      }
+    });
+  }
+
+  function addLayerUI(polyObj) {
+    const list = document.getElementById("layerList");
+
+    const item = document.createElement("div");
+    item.className = "layer-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = true;
+    checkbox.dataset.id = polyObj.id;
+    const colorBox = document.createElement("div");
+    colorBox.className = "color-box";
+    colorBox.style.background = polyObj.color;
+
+    const label = document.createElement("span");
+    console.log("inside addlayerUI:",polyObj.name)
+    label.textContent = polyObj.name || `area-${polyObj.id}`;
+
+    checkbox.checked = ACTIVE_POLYGONS.has(polyObj.id);
+
+    checkbox.addEventListener("change", () => {
+      const visible = checkbox.checked;
+
+      polyObj.visible = visible;
+      polyObj.polygon.setMap(visible ? map : null);
+
+      if (clusteringEnabled) {
+        polyObj.clusterer?.setMap(visible ? map : null);
+      } else {
+        polyObj.markers.forEach(m => m.setMap(visible ? map : null));
+      }
+
+      // 🔥 update active set
+      if (visible) {
+        ACTIVE_POLYGONS.add(polyObj.id);
+
+        // 🔥 LOAD PINS IF NOT ALREADY LOADED
+        if (polyObj.markers.length === 0) {
+          fetchParcelsForPolygon(polyObj);
+        }
+
+      } else {
+        ACTIVE_POLYGONS.delete(polyObj.id);
+      }
+
+      updateActivePolygons();
+    });
+
+    item.appendChild(checkbox);
+    item.appendChild(colorBox);
+    item.appendChild(label);
+    list.appendChild(item);
+  }
+
+  function getAddressNumber(address) {
+    if (!address) return null;
+
+    // match leading number(s)
+    const match = address.trim().match(/^(\d+)/);
+    return match ? match[1] : null;
+  }
+
+  async function fetchParcelsForPolygon(polyObj) {
+    const coords = polyObj.path.map(p => [
+      typeof p.lng === "function" ? p.lng() : p.lng,
+      typeof p.lat === "function" ? p.lat() : p.lat
+    ]);
+    coords.push(coords[0]);
+
+    const geometry = {
+      rings: [coords],
+      spatialReference: { wkid: 4326 }
+    };
+
+    const url = "https://gis.palmbayflorida.org/arcgis/rest/services/Public/Parcels/MapServer/0/query";
+
+    const params = new URLSearchParams({
+      f: "json",
+      geometry: JSON.stringify(geometry),
+      geometryType: "esriGeometryPolygon",
+      spatialRel: "esriSpatialRelIntersects",
+      outFields: "*",
+      returnGeometry: "false"
+    });
+
+    const res = await fetch(url + "?" + params.toString());
+    const json = await res.json();
+
+    const parcelIds = [];
+    const parcelData = [];
+
+    json.features.forEach(f => {
+      const a = f.attributes;
+
+      if (!a.INSIDE_Y || !a.INSIDE_X) return;
+      if (!a.alt_key) {
+        console.warn("Missing alt_key for parcel:", a);
+        return;
+      }
+      if (!a.alt_key) return;
+
+      parcelIds.push(a.alt_key);
+
+      parcelData.push({
+        parcel_id: a.alt_key,
+        lat: a.INSIDE_Y,
+        lng: a.INSIDE_X,
+        address: a.situs_1 || "",
+        city: a.add_3 || "",
+        owner: a.name || ""
+      });
+    });
+
+    // 🔥 send to backend (unchanged)
+    await sendParcelsToBackend(parcelIds);
+
+    // 🔥 fetch statuses BEFORE creating markers
+    const statuses = await fetchCurrentParcelStatuses(parcelIds);
+
+    // 🔥 CREATE markers with correct colors immediately
+    createMarkersWithStatuses(polyObj, parcelData, statuses);
+
+  }
+
+  function applyClustering(polyObj) {
+    if (polyObj.clusterer) polyObj.clusterer.setMap(null);
+
+    if (clusteringEnabled) {
+      polyObj.markers.forEach(m => m.setMap(null));
+      polyObj.clusterer = new markerClusterer.MarkerClusterer({
+        map: map,
+        markers: polyObj.markers
+      });
+    } else {
+      polyObj.markers.forEach(m => {
+        if (polyObj.visible) m.setMap(map);
+      });
+    }
+  }
+
+  function toggleClustering() {
+    clusteringEnabled = !clusteringEnabled;
+
+    document.getElementById("clusterBtn").textContent =
+      `Clustering: ${clusteringEnabled ? "ON" : "OFF"}`;
+
+    polygons.forEach(applyClustering);
+  }
+
+  function clearAll() {
+    polygons.forEach(p => {
+      p.polygon.setMap(null);
+      p.clusterer?.setMap(null);
+      p.markers.forEach(m => m.setMap(null));
+    });
+
+    polygons = [];
+    document.getElementById("layerList").innerHTML = "";
+  }
+
+  function applyStatusesToMarkers(polyObj, statuses) {
+    const statusMap = {};
+
+    statuses.forEach(s => {
+      statusMap[s.parcel_id] = {
+        status: s.status,
+        created_at: s.created_at
+      };
+    });
+
+    polyObj.markers.forEach(marker => {
+      const statusObj = statusMap[marker.parcel_id];
+      if (!statusObj) return;
+
+      const status = statusObj.status;
+      const created_at = statusObj.created_at;
+
+      // 🔥 update marker state
+      marker.current_status = status;
+      marker.created_at = created_at;
+
+      // 🔥 update marker color
+      marker.setIcon({
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 15,
+        fillColor: STATUS_COLORS[status],
+        fillOpacity: 1,
+        strokeWeight: 1,
+        strokeColor: "#000"
+      });
+    });
+  }
+
+  function getRandomColor() {
+    const colors = ["#ef4444","#22c55e","#3b82f6","#f59e0b","#a855f7","#14b8a6"];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  const toggle = document.getElementById("uiToggle");
+
+  function applyUIToggle(visible) {
+    document.querySelectorAll(".ui-group").forEach(el => {
+      el.style.opacity = visible ? "1" : "0";
+      el.style.pointerEvents = visible ? "auto" : "none";
+    });
+  }
+
+  // 🔥 default OFF on load
+  applyUIToggle(false);
+
+  toggle.addEventListener("change", (e) => {
+    applyUIToggle(e.target.checked);
+  });
+  </script>
+
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGFCA70J_CRFo-FxwoSpN3ZjpMicNeVfM&callback=initMap">
+  </script>
+
+  <script>
+
+  let userMarker = null;
+  let userAccuracyCircle = null;
+
+  let lastLocationSentAt = 0;
+  const LOCATION_SEND_INTERVAL = 20000; // 2 seconds
+
+  function getUserLocation() {
+    if (!navigator.geolocation) {
+      console.warn("Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.watchPosition(
+      (position) => {
+        if (!CURRENT_USER) return;
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+
+        const userLatLng = { lat, lng };
+
+        // 🔥 Throttled backend update
+        const now = Date.now();
+        if (now - lastLocationSentAt > LOCATION_SEND_INTERVAL) {
+          lastLocationSentAt = now;
+
+          fetch("https://lightwalk.coryzuber.workers.dev/update-location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user: CURRENT_USER,
+              lat,
+              lng,
+              accuracy,
+              heading: position.coords.heading,
+              speed: position.coords.speed
+            })
+          }).catch(() => {}); // silent fail (don’t spam console)
+        }
+
+        console.log("📍", lat, lng, "±", accuracy, "m");
+
+        // 🔥 Create once
+        if (!userMarker) {
+          userMarker = new google.maps.Marker({
+            position: userLatLng,
+            map: map,
+            title: "You are here",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 6,
+              fillColor: "#2563eb",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#000"
+            }
+          });
+
+          userAccuracyCircle = new google.maps.Circle({
+            center: userLatLng,
+            radius: accuracy,
+            map: map,
+            fillColor: "#2563eb",
+            fillOpacity: 0.15,
+            strokeColor: "#2563eb",
+            strokeOpacity: 0.4,
+            strokeWeight: 1
+          });
+
+          map.setCenter(userLatLng);
+
+        } else {
+          // 🔥 Update existing
+          userMarker.setPosition(userLatLng);
+
+          if (userAccuracyCircle) {
+            userAccuracyCircle.setCenter(userLatLng);
+            userAccuracyCircle.setRadius(accuracy);
+          }
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 5000
+      }
+    );
+  }
+
+  async function sendParcelsToBackend(parcelIds) {
+    const CHUNK_SIZE = 80;
+
+    for (let i = 0; i < parcelIds.length; i += CHUNK_SIZE) {
+      const chunk = parcelIds.slice(i, i + CHUNK_SIZE);
+
+      try {
+        await fetch("https://lightwalk.coryzuber.workers.dev/init-parcels", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            parcel_ids: chunk
+          })
+        });
+      } catch (err) {
+        console.error("Failed to send chunk", err);
+      }
+    }
+  }
+  async function fetchCurrentParcelStatuses(parcelIds) {
+    const CHUNK_SIZE = 80; // safe under SQLite limit
+    let allResults = [];
+
+    for (let i = 0; i < parcelIds.length; i += CHUNK_SIZE) {
+      const chunk = parcelIds.slice(i, i + CHUNK_SIZE);
+
+      try {
+        const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-current-parcels", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            parcel_ids: chunk
+          })
+        });
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Invalid chunk response:", data);
+          continue;
+        }
+
+        allResults = allResults.concat(data);
+
+      } catch (err) {
+        console.error("Chunk fetch failed:", err);
+      }
+    }
+
+    return allResults;
+  }
+  function createMarkersWithStatuses(polyObj, parcelData, statuses) {
+
+    if (!Array.isArray(statuses)) {
+      console.warn("Statuses not array, defaulting to empty");
+      statuses = [];
+    }
+
+    const statusMap = {};
+
+    // 🔥 build full object map (status + timestamp)
+    statuses.forEach(s => {
+      statusMap[s.parcel_id] = {
+        status: s.status,
+        created_at: s.created_at
+      };
+    });
+
+    polyObj.markers = [];
+
+    parcelData.forEach(p => {
+
+      // 🔥 get full object (fallback safe)
+      const statusObj = statusMap[p.parcel_id] || {
+        status: "prospect",
+        created_at: null
+      };
+
+      const status = statusObj.status;
+      const created_at = statusObj.created_at;
+
+      const color = STATUS_COLORS[status] || "#6b7280";
+
+      const addressNumber = getAddressNumber(p.address);
+
+      const marker = new google.maps.Marker({
+        position: { lat: p.lat, lng: p.lng },
+        map: map,
+
+        // 🔥 base pin
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 15,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeWeight: 1,
+          strokeColor: "#000"
+        },
+
+        // 🔥 ONLY add label if number exists
+        ...(addressNumber && {
+          label: {
+            text: addressNumber,
+            color: "#ffffff",
+            fontSize: "12px",
+            fontWeight: "600"
+          }
+        })
+      });
+
+      // 🔥 attach ALL needed data to marker
+      marker.parcel_id = p.parcel_id;
+      marker.current_status = status;
+      marker.created_at = created_at;
+
+      attachMarkerPopup(marker, p);
+
+      polyObj.markers.push(marker);
+    });
+
+    applyClustering(polyObj); // 🔥 REQUIRED
+    // 🔥 FORCE RENDER
+    setTimeout(() => {
+      map.setZoom(map.getZoom());
+    }, 0);
+  }
+
+  async function fetchAllPolygons() {
+    try {
+      const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-polygons");
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("❌ Failed to fetch polygons:", data);
+        return;
+      }
+
+      console.log("✅ ALL POLYGONS:", data);
+
+      data.forEach(row => {
+        const color = getRandomColor();
+
+        const path = row.coords.map(([lat, lng]) =>
+          new google.maps.LatLng(lat, lng)
+        );
+
+        const polygon = new google.maps.Polygon({
+          paths: path,
+          strokeColor: color,
+          fillColor: color,
+          fillOpacity: 0.2,
+          strokeWeight: 2,
+          map: map,
+          clickable: false
+        });
+
+        const polyObj = {
+          id: row.id,
+          name: row.name, // 🔥 THIS is the missing link
+          polygon,
+          path,
+          markers: [],
+          clusterer: null,
+          color,
+          visible: true
+        };
+        console.log("Name:", polyObj.name);
+        polygons.push(polyObj);
+
+        // 🔥 THIS populates the "Areas" list
+        addLayerUI(polyObj);
+      });
+
+    } catch (err) {
+      console.error("❌ fetchAllPolygons error:", err);
+    }
+  }
+
+  function renderNote(notesThread, note) {
+    const isMe = note.user === CURRENT_USER;
+
+    const row = document.createElement("div");
+    row.className = "note-row note-left"; // 🔥 always left
+
+    const bubbleWrap = document.createElement("div");
+
+    // meta for others
+    
+    const meta = document.createElement("div");
+    meta.className = "note-meta";
+    meta.textContent = `${note.user} - ${new Date(note.created_at).toLocaleTimeString()}`;
+    bubbleWrap.appendChild(meta);
+    
+
+    const bubble = document.createElement("div");
+    bubble.className = "note-bubble";
+
+    // 🔥 color difference only (no alignment change)
+    if (isMe) {
+      bubble.style.background = "#2563eb";
+      bubble.style.color = "white";
+    } else {
+      bubble.style.background = "#e5e7eb";
+      bubble.style.color = "#111827";
+    }
+    bubble.textContent = note.note;
+
+    bubbleWrap.appendChild(bubble);
+    row.appendChild(bubbleWrap);
+    notesThread.appendChild(row);
+  }
+
+  function attachMarkerPopup(marker, data) {
+    marker.addListener("click", () => {
+      if (activeInfoWindow) activeInfoWindow.close();
+
+      const container = document.createElement("div");
+      container.style.padding = "5px"; // 🔥 exact spacing you want
+      container.style.margin = "0";
+      // 🔥 NOTES UI (TOP SECTION)
+
+      const notesContainer = document.createElement("div");
+      notesContainer.className = "notes-container";
+
+      const notesThread = document.createElement("div");
+      notesThread.className = "notes-thread";
+
+      // 🔥 LOAD NOTES FROM BACKEND
+      (async () => {
+        try {
+          const res = await fetch("https://lightwalk.coryzuber.workers.dev/get-notes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              parcel_ids: [marker.parcel_id]
+            })
+          });
+
+          const notes = await res.json();
+
+          if (!Array.isArray(notes)) return;
+
+          notes.forEach(note => renderNote(notesThread, note));
+
+          // scroll to bottom
+          notesThread.scrollTop = notesThread.scrollHeight;
+
+        } catch (err) {
+          console.error("Failed to load notes:", err);
+        }
+      })();
+
+      // 🔥 INPUT
+      const inputRow = document.createElement("div");
+      inputRow.className = "notes-input";
+
+      // 🔥 focus trap (prevents auto keyboard)
+      const focusTrap = document.createElement("div");
+      focusTrap.setAttribute("tabindex", "0");
+
+      focusTrap.style.position = "absolute";
+      focusTrap.style.opacity = "0";
+      focusTrap.style.height = "0";
+      focusTrap.style.width = "0";
+      focusTrap.style.pointerEvents = "none";
+
+      const input = document.createElement("input");
+      input.placeholder = "Add note...";
+
+      const sendBtn = document.createElement("button");
+      sendBtn.textContent = "Send";
+
+      sendBtn.onclick = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+
+        input.disabled = true;
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Sending...";
+
+        try {
+          const res = await fetch("https://lightwalk.coryzuber.workers.dev/add-note", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              parcel_id: marker.parcel_id,
+              user: CURRENT_USER,
+              note: text
+            })
+          });
+
+          const data = await res.json();
+
+          if (res.ok && data?.note) {
+            renderNote(notesThread, data.note);
+            input.value = "";
+            notesThread.scrollTop = notesThread.scrollHeight;
+          } else {
+            console.error("Add note failed:", data);
+          }
+
+        } catch (err) {
+          console.error("Add note error:", err);
+        } finally {
+          input.disabled = false;
+          sendBtn.disabled = false;
+          sendBtn.textContent = "Send";
+        }
+      };
+      inputRow.appendChild(focusTrap);
+      inputRow.appendChild(input);
+      inputRow.appendChild(sendBtn);
+
+      notesContainer.appendChild(notesThread);
+      notesContainer.appendChild(inputRow);
+      container.appendChild(notesContainer);
+      
+      const addressRow = document.createElement("div");
+      addressRow.style.marginBottom = "4px";
+
+      // 🔥 address button (full row)
+      const addressBtn = document.createElement("button");
+      addressBtn.style.display = "flex";
+      addressBtn.style.alignItems = "center";
+      addressBtn.style.justifyContent = "space-between";
+      addressBtn.style.width = "100%";
+      addressBtn.style.background = "#f3f4f6"; // light grey
+      addressBtn.style.border = "1px solid #374151"; // dark grey outline
+      addressBtn.style.borderRadius = "6px";
+      addressBtn.style.padding = "6px 8px";
+      addressBtn.style.cursor = "pointer";
+      addressBtn.style.color = "#111";
+      addressBtn.style.fontSize = "14px";
+
+      // 🔥 text
+      const addressText = document.createElement("span");
+      addressText.textContent = data.address || "No Address";
+      addressText.style.textAlign = "left";
+      addressText.style.flex = "1";
+
+      // 🔥 copy icon (inside button)
+      const copyIcon = document.createElement("div");
+      copyIcon.style.width = "16px";
+      copyIcon.style.height = "16px";
+      copyIcon.style.position = "relative";
+      copyIcon.style.marginLeft = "8px";
+
+      copyIcon.innerHTML = `
+        <div style="
+          position:absolute;
+          width:12px;
+          height:12px;
+          border:1px solid #374151;
+          top:2px;
+          left:2px;
+          background:white;
+        "></div>
+        <div style="
+          position:absolute;
+          width:12px;
+          height:12px;
+          border:1px solid #374151;
+          top:0;
+          left:0;
+          background:white;
+        "></div>
+      `;
+
+      // 🔥 copy behavior (entire button clickable)
+      addressBtn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(data.address || "");
+
+          // quick feedback flash
+          addressBtn.style.background = "#d1fae5";
+          setTimeout(() => {
+            addressBtn.style.background = "#f3f4f6";
+          }, 600);
+
+        } catch (err) {
+          console.error("Copy failed:", err);
+        }
+      };
+
+      // assemble
+      addressBtn.appendChild(addressText);
+      addressBtn.appendChild(copyIcon);
+      addressRow.appendChild(addressBtn);
+
+      // rest of popup
+      const cityDiv = document.createElement("div");
+      cityDiv.textContent = data.city;
+
+      const ownerDiv = document.createElement("div");
+      ownerDiv.style.marginTop = "6px";
+      ownerDiv.textContent = `Owner: ${data.owner}`;
+
+      container.appendChild(addressRow);
+      container.appendChild(cityDiv);
+      container.appendChild(ownerDiv);
+
+      
+
+      const btnWrap = document.createElement("div");
+      btnWrap.style.display = "flex";
+      btnWrap.style.flexWrap = "wrap";
+      btnWrap.style.gap = "6px";
+
+      Object.keys(STATUS_COLORS).forEach(status => {
+        const btn = document.createElement("button");
+
+        btn.textContent = status;
+        btn.style.padding = "6px 8px";
+        btn.style.border = "none";
+        btn.style.borderRadius = "6px";
+        btn.style.cursor = "pointer";
+        btn.style.fontSize = "14px";
+        btn.style.color = "white";
+        btn.style.background = STATUS_COLORS[status];
+
+        if (marker.current_status === status) {
+          btn.style.outline = "2px solid white";
+        }
+
+        btn.onclick = async () => {
+          if (marker.current_status === status) return;
+
+          try {
+            // 🔥 send update to backend
+            const res = await updateParcelStatus(marker.parcel_id, status);
+
+            if (!res?.parcel) return;
+
+            const updated = [res.parcel];
+
+            // 🔥 apply ONLY backend truth
+            applyStatusesToMarkers({ markers: [marker] }, updated);
+            // 🔥 update status text in popup
+            const statusText = container.querySelector("#statusText");
+            if (statusText && updated[0]?.status) {
+              statusText.textContent = updated[0].status;
+              statusText.style.color = STATUS_COLORS[updated[0].status];
+            }
+
+            // 🔥 update timestamp
+            const metaTime = container.querySelector("#metaTime");
+            if (metaTime && updated[0]?.created_at) {
+              metaTime.textContent = new Date(updated[0].created_at).toLocaleString();
+            }
+            // 🔥 update button highlight AFTER backend confirms
+            btnWrap.querySelectorAll("button").forEach(b => b.style.outline = "none");
+
+            const confirmedStatus = updated[0]?.status;
+            if (confirmedStatus) {
+              const correctBtn = [...btnWrap.children].find(b => b.textContent === confirmedStatus);
+              if (correctBtn) correctBtn.style.outline = "2px solid white";
+            }
+
+          } catch (err) {
+            console.error("Update failed:", err);
+          }
+        };
+
+        btnWrap.appendChild(btn);
+      });
+
+      container.appendChild(btnWrap);
+
+      const meta = document.createElement("div");
+      meta.style.marginTop = "10px";
+      meta.style.fontSize = "12px";
+      meta.style.opacity = "0.85";
+
+      meta.innerHTML = `
+        <div><b>Parcel ID:</b> ${marker.parcel_id}</div>
+        <div>
+          <b>Last Updated:</b> 
+          <span id="metaTime">
+            ${marker.created_at ? new Date(marker.created_at).toLocaleString() : "unknown"}
+          </span>
+        </div>
+      `;
+
+  container.appendChild(meta);
+
+      activeInfoWindow = new google.maps.InfoWindow({
+        content: container
+      });
+
+      activeInfoWindow.open(map, marker);
+    });
+  }
+
+  async function updateParcelStatus(parcel_id, status) {
+    if (!CURRENT_USER) {
+      console.warn("No user selected");
+      return;
+    }
+
+    try {
+      const res = await fetch("https://lightwalk.coryzuber.workers.dev/update-parcel-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          parcel_id,
+          status,
+          user: CURRENT_USER
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Worker error:", data);
+        return;
+      }
+
+      return data; // 🔥 THIS is the key
+
+    } catch (err) {
+      console.error("❌ Failed to update parcel status:", err);
+    }
+  }
+
+  
+
+  </script>
+ 
+  </body>
+  </html>
